@@ -11,10 +11,28 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\usb_relay.c" />
+    <ClCompile Include="..\src\arch.c" />
+    <ClCompile Include="..\src\daemonize.c" />
+    <ClCompile Include="..\src\log.c" />
+    <ClCompile Include="..\src\net.c" />
+    <ClCompile Include="..\src\usb-relay.c" />
+    <ClCompile Include="..\src\webio.c" />
+    <ClCompile Include="..\src\yselect.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\src\makefile" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\arch.h" />
+    <ClInclude Include="..\src\config.h" />
+    <ClInclude Include="..\src\daemonize.h" />
+    <ClInclude Include="..\src\debug.h" />
+    <ClInclude Include="..\src\log.h" />
+    <ClInclude Include="..\src\mytypes.h" />
+    <ClInclude Include="..\src\net.h" />
+    <ClInclude Include="..\src\usb-relay.h" />
+    <ClInclude Include="..\src\webio.h" />
+    <ClInclude Include="..\src\yselect.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <SccProjectName />
