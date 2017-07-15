@@ -344,28 +344,29 @@ int find_relay_devices(RELAY_CONFIG *config)
 
 
 // currently supports 4 board when compiled with 64 bit
-int
-write_bitmask(RELAY_CONFIG *config,int bitmask)
+long long
+write_bitmask(RELAY_CONFIG *config,long long bitmask)
 {
 int i;
     // currently supports 4 board when compiled with 64 bit
     for(i=0;i<config->board_count;i++)
     {
-        if(config->verbose>1) printf("writing to board %d bitmask %x from raw %x\n",i,(bitmask>>(i*16))&0xffff,bitmask);
+        if(config->verbose>1) printf("writing to board %d bitmask %llx from raw %llx\n",i,(bitmask>>(i*16))&0xffff,bitmask);
         write_state(config->relays[i].fd,(bitmask>>(i*16))&0xffff,1);
     }
     return(read_bitmask(config));
 }
 
-int
+long long
 read_bitmask(RELAY_CONFIG *config)
 {
-int i,t,ret=0;
+int i;
+long long t,ret=0;
     // currently supports 4 board when compiled with 64 bit
     for(i=0;i<config->board_count;i++)
     {
         t=read_current_state(config->relays[i].fd);
-        ret|=(t<<(i*16));
+        ret|=(long long)(t<<(i*16));
     }
     return(ret);
 }
@@ -377,7 +378,7 @@ sanity_test(RELAY_CONFIG *config)
 
     for(i=0;i<config->board_count*16;i++)
     {
-        write_bitmask(config,1<<i);
+        write_bitmask(config,(long long)1<<i);
         ysleep_usec(500000);
     }
     return(0);
@@ -389,7 +390,7 @@ char
 *process_command(RELAY_CONFIG *config, char *cmd)
 {
     char	*subst;
-	char	*strt_p;
+    char	*strt_p;
     static char    return_message[1024];
 
     return_message[0]=0;
@@ -418,7 +419,7 @@ char
         else if(0==strcmp("get",subst))
         {
             // Get Current State
-            sprintf(return_message,"%x\n",read_bitmask(config));
+            sprintf(return_message,"%llx\n",read_bitmask(config));
         }
         else if(0==strcmp("set",subst))
         {
@@ -430,12 +431,12 @@ char
             }
             else
             {
-                int value;
+                long long value;
                 // set value
-                value=(int)strtol(subst, NULL, 16);
+                value=strtoll(subst, NULL, 16);
                 write_bitmask(config,value);
                 // read back
-                sprintf(return_message,"%x\n",read_bitmask(config));
+                sprintf(return_message,"%llx\n",read_bitmask(config));
             }
         }
         else if(0==strcmp("play",subst))
@@ -663,6 +664,7 @@ int main(int argc, char **argv)
                 readln_from_a_file((FILE*)stdin, (char *)cmd, 128);
                 ret_str=process_command(&config,cmd);
                 printf("%s",ret_str);
+		fflush(stdout);
             }
         }
 

@@ -112,7 +112,7 @@ typedef struct relay_config_
 
 
 int is_device_relay(char *device_directory, char *device_name);
-int read_bitmask(RELAY_CONFIG *config);
+long long read_bitmask(RELAY_CONFIG *config);
 int read_current_state(int fd);
 const char *bus_str(int bus);
 
