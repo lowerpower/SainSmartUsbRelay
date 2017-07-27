@@ -286,6 +286,25 @@ int find_relay_devices(RELAY_CONFIG *config)
     DIR *dp;
     struct dirent *ep;     
 
+
+    // if emulation, just set the estate and relay to active for the number of boards 
+    //  specified.
+    if(config->emulate)
+    {
+        int i;
+
+        for(i=0;i<config->emulate;i++)
+        {
+            // set board as active
+            config->relays[config->board_count].active=1;
+            // zero device state
+            config->relays[config->board_count].estate=0;
+            // Inc count
+            config->board_count++;
+        }
+        return(0);
+    }
+
     // Open the devices directory
     dp = opendir (config->dev_dir);
 
@@ -322,15 +341,16 @@ int find_relay_devices(RELAY_CONFIG *config)
                         config->relays[config->board_count].active=1;
 
                         // Inc count
-                        config->board_count++;
+                        ret=config->board_count++;
 
                         if(config->verbose) printf("setup relay board %d.\n",config->board_count);
                     }
                     else
                     {
                         perror ("Could not malloc relay device name.");
+                        ret=-1;
+                        break;
                     }
-
                 }
             }
         }
@@ -352,7 +372,14 @@ int i;
     for(i=0;i<config->board_count;i++)
     {
         if(config->verbose>1) printf("writing to board %d bitmask %llx from raw %llx\n",i,(bitmask>>(i*16))&0xffff,bitmask);
-        write_state(config->relays[i].fd,(bitmask>>(i*16))&0xffff,1);
+
+        if(config->emulate)
+        {
+            config->relays[i].estate=(bitmask>>(i*16))&0xffff;
+            ysleep_usec(5000);
+        }
+        else
+            write_state(config->relays[i].fd,(bitmask>>(i*16))&0xffff,1);
     }
     return(read_bitmask(config));
 }
@@ -365,7 +392,14 @@ long long t,ret=0;
     // currently supports 4 board when compiled with 64 bit
     for(i=0;i<config->board_count;i++)
     {
-        t=read_current_state(config->relays[i].fd);
+        if(config->emulate)
+        {
+            t=config->relays[i].estate;
+            ysleep_usec(1000);
+        }
+        else
+            t=read_current_state(config->relays[i].fd);
+        
         ret|=(long long)(t<<(i*16));
     }
     return(ret);
@@ -493,40 +527,35 @@ startup_banner()
 	fflush(stdout);	
 }
 
+
 void usage(int argc, char **argv)
 {
   startup_banner();
 
   printf("usage: %s [-h] [-v(erbose)] [-c udp_command_port] bitmask \n",argv[0]);
   printf("\t -h this output.\n");
-  printf("\t -v verbosity\n");
-  printf("\n -t run test\n");
+  printf("\t -v verbosity.\n");
+  printf("\t -t run test.\n");
+  printf("\t -c command port (defaults 1026)\n");
+  printf("\t -e emulate number of boards (no hardware needed)\n");
   printf("\t -c command port (defaults 1026)\n");
 
   exit(2);
-}
+} 
 
 int main(int argc, char **argv)
 {
-    //HID_COMMAND hid_cmd;
-	//int fd;
-	//char buf[256];
-	//struct hidraw_report_descriptor rpt_desc;
-	//struct hidraw_devinfo info;
-	//char *device = "/dev/hidraw0";
-
 	int c, test=0;
     RELAY_CONFIG config;
-
     
     // Initialize config
     memset(&config,0,sizeof(RELAY_CONFIG));    
     strcpy(config.dev_dir,"/dev/");
     config.max_on_time=10;
-    //config.control_port=1026;                       // default UDP port 1026
-
+    //config.control_port=1026;                       // default UDP port 0 (off)
+    
     // Parse Command Line
-	while ((c = getopt(argc, argv, "c:tvh")) != EOF)
+	while ((c = getopt(argc, argv, "c:e:tvh")) != EOF)
 	{
     		switch (c) 
 			{
@@ -541,6 +570,23 @@ int main(int argc, char **argv)
     		case 't':
                 test=1;
     			break;
+            case 'e':
+                config.emulate=atoi(optarg);
+                if(config.emulate)
+                {
+                    if(config.emulate>MAX_RELAY_BOARDS)
+                    {
+                        if(config.verbose) printf ("requested to emulating %d relay boards, set to max %d\n",config.emulate, MAX_RELAY_BOARDS);
+                        config.emulate=MAX_RELAY_BOARDS;
+                    }
+                    else
+                        if(config.verbose) printf ("emulating %d relay boards\n",config.emulate);
+                }
+                else
+                {
+                    if(config.verbose) printf ("emulate specified but set to 0 boards\n");
+                }
+                break;
     		case 'h':
     			usage (argc,argv);
     			break;
@@ -574,7 +620,7 @@ int main(int argc, char **argv)
 	    else
 	    {
 		    if(config.verbose) printf("Failed to bindt %d, error %d cannot Startup\n",config.control_port,get_last_error());
-		    perror("bind\n");
+		    perror("bind udp socket\n");
             exit(2);
 	    }
     }
@@ -643,7 +689,7 @@ int main(int argc, char **argv)
             //
             // Wait on select, 100ms, chance YS to ms paramters
             //
-            printf("call select\n");
+            if(config.verbose>1)  printf("call select\n");
             active = Yoics_Select(1000);
             if(active)
             {
@@ -660,11 +706,11 @@ int main(int argc, char **argv)
             // stdio command processor
             if(kbhit())
             {
-                            if(config.verbose) printf("kbhit\n");
+                if(config.verbose) printf("kbhit\n");
                 readln_from_a_file((FILE*)stdin, (char *)cmd, 128);
                 ret_str=process_command(&config,cmd);
                 printf("%s",ret_str);
-		fflush(stdout);
+		        fflush(stdout);
             }
         }
 

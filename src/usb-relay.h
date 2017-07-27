@@ -91,6 +91,7 @@ typedef struct relay_
     char    *device;
     int     fd;
     int     active;     
+    int     estate;
 }RELAY;
 
 // program config structure
@@ -101,6 +102,9 @@ typedef struct relay_config_
     SOCKET		control_soc;    
     char        dev_dir[255];
     char        pidfile[255];
+
+    int         emulate;
+    long long   emulation_state;
 
     int         daemonize;
     int         verbose;
