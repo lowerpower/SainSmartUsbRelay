@@ -471,6 +471,15 @@ char
                 write_bitmask(config,value);
                 // read back
                 sprintf(return_message,"%llx\n",read_bitmask(config));
+
+                // See if there is a hold time
+                subst=strtok_r(NULL," \n",&strt_p);  
+                if(0!=subst)
+                {
+                    // Get the hold time
+                    config->hold_time=atoi(subst);
+                    config->hold_start=hund_ms_count();
+                }
             }
         }
         else if(0==strcmp("play",subst))
@@ -551,7 +560,7 @@ int main(int argc, char **argv)
     // Initialize config
     memset(&config,0,sizeof(RELAY_CONFIG));    
     strcpy(config.dev_dir,"/dev/");
-    config.max_on_time=10;
+    config.max_on_time=20;                            // 2 seconds
     //config.control_port=1026;                       // default UDP port 0 (off)
     
     // Parse Command Line
@@ -704,30 +713,42 @@ int main(int argc, char **argv)
         {
             char    *ret_str,cmd[127];
             // stdio command processor
-            if(kbhit())
+
+            // only check after hold time
+            if((0==config.hold_time) ||  (hund_ms_count()-config.hold_start)>config.hold_time)
             {
-                if(config.verbose) printf("kbhit\n");
-                readln_from_a_file((FILE*)stdin, (char *)cmd, 128);
+                config.hold_time=config.hold_start=0;
+                if(kbhit())
+                {
+                    if(config.verbose) printf("kbhit\n");
+                    readln_from_a_file((FILE*)stdin, (char *)cmd, 128);
+                    ret_str=process_command(&config,cmd);
+                    printf("%s",ret_str);
+		            fflush(stdout);
+                    config.on_time_start=hund_ms_count();
+                }
+            }
+        }
+
+        //config.max_on_time
+        // Make sure everything is off based on max on time
+        if((config.on_time_start) && ((hund_ms_count()-config.on_time_start)>config.max_on_time) )
+		{
+            long long value;
+			
+            config.on_time_start=0;
+
+            value=read_bitmask(&config);
+            // failsafe off            value=read_bitmask(config);
+            if(value!=0)
+            {
+                char    *ret_str,cmd[127];
+                strcpy(cmd,"set 0");
                 ret_str=process_command(&config,cmd);
                 printf("%s",ret_str);
 		        fflush(stdout);
             }
-        }
-
-
-
-        //config.max_on_time
-        // Make sure everything is off based on max on time
-	/*	if((second_count()-timestamp)>config.max_on_time)
-		{
-            int value;
-			timestamp=second_count();
-            // failsafe off
-            value=read_bitmask(RELAY_CONFIG *config);
-            if(value)
-
 		}
-        */
     }
 
     exit(0);

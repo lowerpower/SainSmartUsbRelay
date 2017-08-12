@@ -109,6 +109,11 @@ typedef struct relay_config_
     int         daemonize;
     int         verbose;
     int         board_count;
+    //
+    int         hold_start;
+    int         hold_time;
+    //
+    int         on_time_start;
     int         max_on_time;                            // in 100's of ms (tenths of a second)
 
     struct relay_ relays[MAX_RELAY_BOARDS];
