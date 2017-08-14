@@ -24,11 +24,11 @@ on the USB HID board.
 
 ## Links
 * https://github.com/lowerpower/fire-controller-web - Web UI that can drive this software.
-* hello
+* https://www.facebook.com/rearedinsteel/ - Reared In Steel facebook.  
 
 ## Acknolegements
 https://github.com/mvines/relay :
-I've borrowed the required hardware (https://github.com/lowerpower/SainSmartUsbRelay/new/master?readme=1#required-hardware) section of this document from this site.  I also used this software here to help me figure out 
+I've borrowed the [required hardware](https://github.com/lowerpower/SainSmartUsbRelay/new/master?readme=1#required-hardware) section of this document from this site.  I also used this software here to help me figure out 
 the USB protocol for these reley boards, this is great software but I needed somehting a bit different and was more cofortable 
 doing this in C.  I highly recommend you look at this software to see if it fits your purpose betther than the software here, and 
 for general knowlege
