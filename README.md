@@ -7,7 +7,7 @@ This software is still in flux and the UDP command control and Daemonize functio
 Clone into a directory, enter the source directory and type 'make'.  This will generate a binary called 'usb-relay'. You should not need any non standard or special librarys to build this software as it directly uses hidraw.  This has been build on raspberry pi's and Ubuntu desktops, but it should build on most linux systems.
 
 ## Using the Software
-Currently this software is drivin at the command line in interactive mode.  I primarly use it via websockets with 
+Currently this software is can be drivin the command line in interactive mode or by a UDP socket.  I primarly use it via websockets with 
 [websocketd](https://github.com/joewalnes/websocketd) controlling it with a [web interface](https://github.com/lowerpower/fire-controller-web)
 
 ```
