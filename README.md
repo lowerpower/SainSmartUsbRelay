@@ -90,6 +90,7 @@ on the USB HID board.
 ## Links
 * https://github.com/lowerpower/fire-controller-web - Web UI that can drive this software.
 * https://www.facebook.com/rearedinsteel/ - Reared In Steel facebook.  
+* https://www.facebook.com/rearedinsteel/videos/713271008877496/ - project in action on flower tower
 * [Video Demo](https://www.youtube.com/watch?v=d_1EEWdWekI) of this project integrated into a solution.
 * [websocketd](https://github.com/joewalnes/websocketd) - allows websocket control of a stdio program.
 
