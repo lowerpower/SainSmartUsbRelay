@@ -714,6 +714,11 @@ int main(int argc, char **argv)
             char    *ret_str,cmd[127];
             // stdio command processor
 
+            // Sleep for 10ms becaue we are not waiting on select, kbhit should be modified to take a timeout
+            // and we wouldnt need this
+            //
+            //ysleep_usec(10000);
+
             // only check after hold time
             if((0==config.hold_time) ||  (hund_ms_count()-config.hold_start)>config.hold_time)
             {

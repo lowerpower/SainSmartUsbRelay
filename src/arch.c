@@ -821,7 +821,7 @@ int kbhit(void)
 	fd_set read_fd;
 
 	tv.tv_sec=0;
-	tv.tv_usec=0;
+	tv.tv_usec=20000;
 
 	FD_ZERO(&read_fd);
 	FD_SET(0,&read_fd);
