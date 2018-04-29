@@ -4,7 +4,7 @@ C program to enumerate and control SainSmart 16 channel relay boards.  I created
 This software is still in flux and the UDP command control and Daemonize functions are completly untested.
 
 ## To Build
-Clone into a directory, enter the source directory and type 'make'.  This will generate a binary called 'usb-relay'. You should not need any non standard or special librarys to build this software as it directly uses hidraw.  This has been build on raspberry pi's and Ubuntu desktops, but it should build on most linux systems.
+Clone into a directory, enter the source directory and type 'make'.  This will generate a binary called 'usb-relay'. You should not need any non standard or special librarys to build this software as it directly uses hidraw.  This has been build on raspberry pi's and Ubuntu desktops, but it should build and run on most linux systems.
 
 ## Using the Software
 Currently this software is can be drivin the command line in interactive mode or by a UDP socket.  I primarly use it via websockets with 
