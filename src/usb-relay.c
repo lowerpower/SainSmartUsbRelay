@@ -34,11 +34,11 @@ int
 send_command(int fd, HID_COMMAND *hid_cmd)
 {
     U8 *buffer;
-    U8  *buf;
+    //U8  *buf;
   //  int i;
     int ret;
 
-    buf=(U8*)hid_cmd;
+    //buf=(U8*)hid_cmd;
     buffer=(U8*)hid_cmd;
 
     hid_cmd->checksum=0;
@@ -109,7 +109,7 @@ int ret=0;
 int
 read_data(int fd,char *buf, int buflen, int timeout)
 {
-    int             res,i,ret;
+    int             res,ret;
     int             seconds=0;
     int             useconds=0;
     struct timeval	tv;
@@ -201,8 +201,7 @@ int
 reset_board(int fd)
 {
     HID_COMMAND hid_cmd;
-    char    buffer[128];
-    int     ret, value=0;
+    //char    buffer[128];
 
     hid_cmd.cmd=HID_CMD_ERASE;
     hid_cmd.len=sizeof(hid_cmd) - sizeof(hid_cmd.checksum);             //(- checksum)
@@ -479,6 +478,7 @@ char
                     // Get the hold time
                     config->hold_time=atoi(subst);
                     config->hold_start=hund_ms_count();
+                    syslog(LOG_INFO,"hold time %d",config->hold_time);
                 }
             }
         }
@@ -521,6 +521,24 @@ termination_handler (int signum)
               }
 #endif
         exit(11);
+    }
+}
+
+void
+clear_all(RELAY_CONFIG *config)
+{
+    long long value;
+
+	config->on_time_start=0;
+
+    value=read_bitmask(config);
+    if(value!=0)
+    {
+    	char    *ret_str,cmd[127];
+        strcpy(cmd,"set 0");
+        ret_str=process_command(config,cmd);
+        printf("%s",ret_str);
+        fflush(stdout);
     }
 }
 
@@ -732,6 +750,11 @@ int main(int argc, char **argv)
 		            fflush(stdout);
                     config.on_time_start=hund_ms_count();
                 }
+                else
+                {
+                    //clear?
+                    clear_all(&config);
+                }
             }
         }
 
@@ -739,9 +762,11 @@ int main(int argc, char **argv)
         // Make sure everything is off based on max on time
         if((config.on_time_start) && ((hund_ms_count()-config.on_time_start)>config.max_on_time) )
 		{
-            long long value;
 			
+			clear_all(&config);
+/*
             config.on_time_start=0;
+
 
             value=read_bitmask(&config);
             // failsafe off            value=read_bitmask(config);
@@ -753,6 +778,7 @@ int main(int argc, char **argv)
                 printf("%s",ret_str);
 		        fflush(stdout);
             }
+*/		
 		}
     }
 
