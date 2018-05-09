@@ -110,11 +110,11 @@ typedef struct relay_config_
     int         verbose;
     int         board_count;
     //
-    int         hold_start;
-    int         hold_time;
+    U32         hold_start;
+    U32         hold_time;
     //
-    int         on_time_start;
-    int         max_on_time;                            // in 100's of ms (tenths of a second)
+    U32         on_time_start;
+    U32         max_on_time;                            // in 100's of ms (tenths of a second)
 
     struct relay_ relays[MAX_RELAY_BOARDS];
 }RELAY_CONFIG;

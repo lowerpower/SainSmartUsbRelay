@@ -477,7 +477,8 @@ char
                 {
                     // Get the hold time
                     config->hold_time=atoi(subst);
-                    config->hold_start=hund_ms_count();
+                    //config->hold_start=hund_ms_count();
+                    config->hold_start=ms_count();
                     syslog(LOG_INFO,"hold time %d",config->hold_time);
                 }
             }
@@ -574,11 +575,19 @@ int main(int argc, char **argv)
 {
 	int c, test=0;
     RELAY_CONFIG config;
+   
+
+   /* printf("mscount = %ld\n",ms_count());
+    printf("mscount = %ld\n",ms_count());
+    ysleep_seconds(1);
+    printf("mscount = %ld\n",ms_count());
+   exit(1); 
+    */
     
     // Initialize config
     memset(&config,0,sizeof(RELAY_CONFIG));    
     strcpy(config.dev_dir,"/dev/");
-    config.max_on_time=20;                            // 2 seconds
+    config.max_on_time=2500;                          // 2 seconds
     //config.control_port=1026;                       // default UDP port 0 (off)
     
     // Parse Command Line
@@ -738,7 +747,8 @@ int main(int argc, char **argv)
             //ysleep_usec(10000);
 
             // only check after hold time
-            if((0==config.hold_time) ||  (hund_ms_count()-config.hold_start)>config.hold_time)
+            //if((0==config.hold_time) ||  (hund_ms_count()-config.hold_start)>config.hold_time)
+            if((0==config.hold_time) ||  (ms_count()-config.hold_start)>config.hold_time)
             {
                 config.hold_time=config.hold_start=0;
                 if(kbhit())
@@ -748,7 +758,8 @@ int main(int argc, char **argv)
                     ret_str=process_command(&config,cmd);
                     printf("%s",ret_str);
 		            fflush(stdout);
-                    config.on_time_start=hund_ms_count();
+                    //config.on_time_start=hund_ms_count();
+                    config.on_time_start=ms_count();
                 }
                 else
                 {
@@ -760,7 +771,8 @@ int main(int argc, char **argv)
 
         //config.max_on_time
         // Make sure everything is off based on max on time
-        if((config.on_time_start) && ((hund_ms_count()-config.on_time_start)>config.max_on_time) )
+        //if((config.on_time_start) && ((hund_ms_count()-config.on_time_start)>config.max_on_time) )
+        if((config.on_time_start) && ((ms_count()-config.on_time_start)>config.max_on_time) )
 		{
 			
 			clear_all(&config);

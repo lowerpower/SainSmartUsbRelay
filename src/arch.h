@@ -24,6 +24,15 @@ U32 second_count(void);
 */
 U16	hund_ms_count(void);
 
+/*! \fn  U16 hund_ms_count(void);
+ *
+ *  \brief returns a counter in incerment of 100ms per inc                              
+ *         
+ *  \return second count.
+ *             
+ */
+U32 ms_count(void);
+
 
 /*! \fn void ysleep_seconds(U16 duration);
 

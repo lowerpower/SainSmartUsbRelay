@@ -208,7 +208,39 @@ U16	hund_ms_count(void)
 	return(ticks);
 }
 
+U32 ms_count(void)
+{
+    U32 ticks;
 
+// Should this all be like the MAC?
+
+#if  defined(MACOSX) || defined(__ECOS) || defined(LINUX)
+    struct timeval   Tp;
+    struct timezone  Tzp;
+    gettimeofday( &Tp, &Tzp );     /* get timeofday */
+    ticks=0;
+    ticks=(Tp.tv_sec*1000);
+    //printf("ticks seconds = %d\n",ticks);
+    ticks=ticks + (Tp.tv_usec/1000);
+    //printf("ticks ms = %d\n",(Tp.tv_usec)/1000);
+    //printf("raw        %d\n",Tp.tv_usec);
+#endif
+#if defined(WIN32) 
+    struct timeb    timebuffer;
+    ftime( &timebuffer );
+    ticks=0;
+    ticks=(timebuffer.time*1000);
+    ticks=ticks + ((timebuffer.millitm));
+#endif
+#if defined(WINCE)
+    SYSTEMTIME tSystemtime;
+    GetLocalTime(&tSystemtime);
+    ticks=0;
+    ticks=(tSystemtime.wSecond*1000);
+    ticks=ticks+(tSystemtime.wMilliseconds);
+#endif
+    return(ticks);    
+}
 
 //
 // threadswitch() - force a threadswitch
