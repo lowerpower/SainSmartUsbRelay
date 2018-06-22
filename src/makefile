@@ -28,8 +28,8 @@ LIBS_INC        =
 DEPENDALL	= mytypes.h yselect.h net.h webio.h yselect.h usb-relay.h daemonize.h
 
 #Objects
-OBJ	= usb-relay.c net.c webio.c arch.c log.c daemonize.c
-OBJ    += yselect.c
+OBJ	= usb-relay.o net.o webio.o arch.o log.o daemonize.o
+OBJ    += yselect.o
 
 $(TARGET): $(OBJ) 
 	$(CC) $(CFLAGS) $(LINKFLAGS) $(TARGET) $(OBJ) $(LIBS)
