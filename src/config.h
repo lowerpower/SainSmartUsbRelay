@@ -1,6 +1,6 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
-/*! \file config.h
+/*! \file config->h
     \brief Configuation/compatibility file 
 */
 
@@ -190,7 +190,7 @@
 #include <net/if_dl.h>
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
-#include <prod_config.h>
+#include <prod_config->h>
 #include <cyg/libc/time/time.h>
 #include <time.h>
 

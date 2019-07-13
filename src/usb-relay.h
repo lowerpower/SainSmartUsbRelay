@@ -5,7 +5,7 @@
 */
 
 #if 0
-/*moved to config.h*/
+/*moved to config->h*/
 /* Linux */
 #include <linux/types.h>
 #include <linux/input.h>
@@ -35,7 +35,7 @@
 
 
 
-#define	VERSION		"0.1"
+//#define	VERSION		"0.2"
 
 typedef unsigned char U8;
 typedef unsigned short U16;
@@ -94,6 +94,15 @@ typedef struct relay_
     int     estate;
 }RELAY;
 
+typedef struct connections_
+{
+    IPADDR  ip;
+    U16     port;
+    U32     last_used;
+    struct connections_ *next;
+}CONNECTIONS;
+
+
 // program config structure
 typedef struct relay_config_
 {
@@ -105,6 +114,8 @@ typedef struct relay_config_
 
     int         emulate;
     long long   emulation_state;
+
+    CONNECTIONS *connections;
 
     int         daemonize;
     int         verbose;

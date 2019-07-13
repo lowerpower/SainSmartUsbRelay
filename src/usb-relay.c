@@ -419,17 +419,25 @@ sanity_test(RELAY_CONFIG *config)
 
 
 // currently supports 4 board when compiled with 64 bit
-char
-*process_command(RELAY_CONFIG *config, char *cmd)
+
+// propose:
+//int *process_command(RELAY_CONFIG *config, char *cmd, chat *replybuffer)
+
+int 
+process_command(RELAY_CONFIG *config, char *cmd, char *replybuffer)
+//char
+//*process_command(RELAY_CONFIG *config, char *cmd)
 {
     char	*subst;
     char	*strt_p;
     static char    return_message[1024];
 
     return_message[0]=0;
+
     // parse in_buffer for command, we use while here so we can break on end of parse or error
 	while(strlen((char *) cmd)>0)
     {
+        if(config->verbose>1)  printf("process command %s\n",cmd);
         // Lets parse, if no subst, exit
         subst=strtok_r((char *) cmd," \n",&strt_p);
         if(0==subst)
@@ -448,6 +456,14 @@ char
             }
             go=0;
             strcpy(return_message,"OK - shutting down\n");
+        }
+        else if (0 == strcmp("disconnect", subst))
+        {
+            strcpy(return_message, "disconnect\n");
+        }
+        else if (0 == strcmp("ping", subst))
+        {
+            strcpy(return_message, "pong\n");
         }
         else if(0==strcmp("get",subst))
         {
@@ -480,6 +496,7 @@ char
                     //config->hold_start=hund_ms_count();
                     config->hold_start=ms_count();
                     syslog(LOG_INFO,"hold time %d",config->hold_time);
+                    if(config->verbose>1)  printf(" hold time %d\n",config->hold_time);
                 }
             }
         }
@@ -493,37 +510,6 @@ char
     return(return_message);
 }
 
-
-void
-termination_handler (int signum)
-{
-
-	go=0;	
-
-    if((SIGFPE==signum) || (SIGSEGV==signum) || (11==signum))
-    {
-        yprintf("Terminated from Signal %d\n",signum);
-		if(is_daemon) syslog(LOG_ERR,"Terminated from Signal 11\n");
-
-#if defined(BACKTRACE_SYMBOLS)
-              {
-                // addr2line?                
-                void* callstack[128];
-                int i, frames = backtrace(callstack, 128);
-                char** strs = backtrace_symbols(callstack, frames);
-                yprintf("backtrace:\n");
-                for (i = 0; i < frames; ++i) 
-                {
-                    yprintf("T->%s\n", strs[i]);
-                    if(is_daemon)  syslog(LOG_ERR,"T->%s\n", strs[i]);
-                }
-                free(strs);
-                fflush(stdout);
-              }
-#endif
-        exit(11);
-    }
-}
 
 void
 clear_all(RELAY_CONFIG *config)
@@ -542,6 +528,105 @@ clear_all(RELAY_CONFIG *config)
         fflush(stdout);
     }
 }
+
+//
+// Add udp client or update its last use.
+//
+int
+//add_client(RELAY_CONFIG *config, IPADDR ip, U16 port)
+add_client(RELAY_CONFIG *config, struct sockaddr_in *client)
+{
+    int ret = 2;
+    IPADDR ip;
+    U16 port=htons(client->sin_port);
+    CONNECTIONS *tconn = config->connections;
+
+    ip.ip32=client->sin_addr.s_addr;
+
+    while (tconn)
+    {
+        if ((tconn->port == port) && (tconn->ip.ip32==ip.ip32))
+        {
+            tconn->last_used = second_count();
+            ret=0;
+            if(config->verbose>1)  printf("timer reset, endpoint %d.%d.%d.%d:%d already exists\n", ip.ipb1,ip.ipb2,ip.ipb3,ip.ipb4,port);
+            break;
+        }
+        tconn = tconn->next;
+    }
+    if (2 == ret)
+    {
+       // Malloc and add to head of list
+        tconn = malloc(sizeof(CONNECTIONS));
+        if (tconn)
+        {
+            tconn->port = port;
+            tconn->ip.ip32 = ip.ip32;
+            tconn->next = config->connections;
+            tconn->last_used = second_count();
+            config->connections = tconn;
+            if(config->verbose>1)  printf("added endpoint %d.%d.%d.%d:%d\n", ip.ipb1,ip.ipb2,ip.ipb3,ip.ipb4,port);
+        }
+        else
+        {
+           if(config->verbose>1)  printf("FAILED: to added endpoint %d.%d.%d.%d:%d\n", ip.ipb1,ip.ipb2,ip.ipb3,ip.ipb4,port);
+           ret = -1;
+        }
+    }
+    return(ret);
+}
+
+CONNECTIONS *
+lookup_client(RELAY_CONFIG *config, IPADDR ip, U16 port)
+{
+
+}
+
+int
+remove_client(RELAY_CONFIG *config, CONNECTIONS *conn)
+{
+
+}
+
+int
+send_status(RELAY_CONFIG *config, char *message)
+{
+    int                 ret;
+    struct sockaddr_in	peer;				// Information about peer to send to 
+    // Loop through and send back to all UDP endpoints that we have a listing for
+    CONNECTIONS *tconn = config->connections;
+    int                 count = 0;
+
+    if (strlen(message))
+    {
+        if (config->verbose > 1)  printf("send->%s\n", message);
+        // Loop through and send back to all UDP endpoints that we have a listing for
+        while (tconn)
+        {
+            // Setup Send
+            memset((void *)&peer, '\0', sizeof(struct sockaddr));
+            peer.sin_family = AF_INET;
+            peer.sin_addr.s_addr = tconn->ip.ip32;
+            peer.sin_port = htons(tconn->port);
+
+            // Do the send
+            ret = sendto(config->control_soc, (char *)message, strlen(message), 0, (struct sockaddr *)&peer, sizeof(struct sockaddr));
+            if (ret < 0)
+            { 
+                // Failed to send
+            }
+            else
+            {
+                count++;
+                DEBUG1("count at %d\n", count);
+            }
+            tconn = tconn->next;
+        }
+    }
+    DEBUG1("out\n");
+    return(count);
+}
+
 
 
 void
@@ -571,10 +656,43 @@ void usage(int argc, char **argv)
   exit(2);
 } 
 
+void
+termination_handler(int signum)
+{
+
+    go = 0;
+
+    if ((SIGFPE == signum) || (SIGSEGV == signum) || (11 == signum))
+    {
+        yprintf("Terminated from Signal %d\n", signum);
+        if (is_daemon) syslog(LOG_ERR, "Terminated from Signal 11\n");
+
+#if defined(BACKTRACE_SYMBOLS)
+        {
+            // addr2line?                
+            void* callstack[128];
+            int i, frames = backtrace(callstack, 128);
+            char** strs = backtrace_symbols(callstack, frames);
+            yprintf("backtrace:\n");
+            for (i = 0; i < frames; ++i)
+            {
+                yprintf("T->%s\n", strs[i]);
+                if (is_daemon)  syslog(LOG_ERR, "T->%s\n", strs[i]);
+            }
+            free(strs);
+            fflush(stdout);
+        }
+#endif
+        exit(11);
+    }
+}
+
 int main(int argc, char **argv)
 {
 	int c, test=0;
-    RELAY_CONFIG config;
+    int active;
+    RELAY_CONFIG config_s;
+    RELAY_CONFIG *config = &config_s;
    
 
    /* printf("mscount = %ld\n",ms_count());
@@ -585,10 +703,10 @@ int main(int argc, char **argv)
     */
     
     // Initialize config
-    memset(&config,0,sizeof(RELAY_CONFIG));    
-    strcpy(config.dev_dir,"/dev/");
-    config.max_on_time=2500;                          // 2 seconds
-    //config.control_port=1026;                       // default UDP port 0 (off)
+    memset(config,0,sizeof(RELAY_CONFIG));    
+    strcpy(config->dev_dir,"/dev/");
+    config->max_on_time=2500;                          // 2 seconds
+    //config->control_port=1026;                       // default UDP port 0 (off)
     
     // Parse Command Line
 	while ((c = getopt(argc, argv, "c:e:tvh")) != EOF)
@@ -597,30 +715,30 @@ int main(int argc, char **argv)
 			{
     		case 'c':
     		    //control port
-    		    config.control_port = atoi(optarg);
-                if(config.verbose) printf ("setting control port to %d\n",config.control_port);
+    		    config->control_port = atoi(optarg);
+                if(config->verbose) printf ("setting control port to %d\n",config->control_port);
     			break;
     		case 'v':
-    			config.verbose++;
+    			config->verbose++;
     			break;
     		case 't':
                 test=1;
     			break;
             case 'e':
-                config.emulate=atoi(optarg);
-                if(config.emulate)
+                config->emulate=atoi(optarg);
+                if(config->emulate)
                 {
-                    if(config.emulate>MAX_RELAY_BOARDS)
+                    if(config->emulate>MAX_RELAY_BOARDS)
                     {
-                        if(config.verbose) printf ("requested to emulating %d relay boards, set to max %d\n",config.emulate, MAX_RELAY_BOARDS);
-                        config.emulate=MAX_RELAY_BOARDS;
+                        if(config->verbose) printf ("requested to emulating %d relay boards, set to max %d\n",config->emulate, MAX_RELAY_BOARDS);
+                        config->emulate=MAX_RELAY_BOARDS;
                     }
                     else
-                        if(config.verbose) printf ("emulating %d relay boards\n",config.emulate);
+                        if(config->verbose) printf ("emulating %d relay boards\n",config->emulate);
                 }
                 else
                 {
-                    if(config.verbose) printf ("emulate specified but set to 0 boards\n");
+                    if(config->verbose) printf ("emulate specified but set to 0 boards\n");
                 }
                 break;
     		case 'h':
@@ -637,25 +755,25 @@ int main(int argc, char **argv)
 
 
     // First search /dev/hidraw* for relay devices
-    if(config.verbose) printf ("Discover Relay Boards on USB bus\n");
-    find_relay_devices(&config);
-    if(config.verbose) printf ("%d SainSmart USB Relay Boards Found.\n",config.board_count);
+    if(config->verbose) printf ("Discover Relay Boards on USB bus\n");
+    find_relay_devices(config);
+    if(config->verbose) printf ("%d SainSmart USB Relay Boards Found.\n",config->board_count);
 
-    if(config.control_port)
+    if(config->control_port)
     {
-	    config.control_soc=udp_listener(config.control_port,config.control_bind_ip);
+	    config->control_soc=udp_listener(config->control_port,config->control_bind_ip);
 
-	    if(config.control_soc!=SOCKET_ERROR)
+	    if(config->control_soc!=SOCKET_ERROR)
 	    {
-		    if(config.verbose) printf("Control port %d Bound to port %d.%d.%d.%d:%d\n",config.control_port,config.control_bind_ip.ipb1,config.control_bind_ip.ipb2,config.control_bind_ip.ipb3,config.control_bind_ip.ipb4,config.control_port);
+		    if(config->verbose) printf("Control port %d Bound to port %d.%d.%d.%d:%d\n",config->control_port,config->control_bind_ip.ipb1,config->control_bind_ip.ipb2,config->control_bind_ip.ipb3,config->control_bind_ip.ipb4,config->control_port);
             // nonblock on sock
-	        set_sock_nonblock(config.control_soc);
+	        set_sock_nonblock(config->control_soc);
             // Add to select
-            Yoics_Set_Select_rx(config.control_soc);
+            Yoics_Set_Select_rx(config->control_soc);
 	    }
 	    else
 	    {
-		    if(config.verbose) printf("Failed to bindt %d, error %d cannot Startup\n",config.control_port,get_last_error());
+		    if(config->verbose) printf("Failed to bindt %d, error %d cannot Startup\n",config->control_port,get_last_error());
 		    perror("bind udp socket\n");
             exit(2);
 	    }
@@ -663,22 +781,22 @@ int main(int argc, char **argv)
     // cycle test
     if(test)
     {
-        if(config.verbose) printf("Testing each relay of all boards (%d) in order\n",config.board_count);
+        if(config->verbose) printf("Testing each relay of all boards (%d) in order\n",config->board_count);
              
-        sanity_test(&config);
+        sanity_test(config);
         exit(0);
     }
 
     //
     // Should Daemonize here, only if we are UDP enabled
     //
-	if(config.daemonize)
+	if(config->daemonize)
 	{
-            if(config.verbose) printf("starting as daemon\n");
-            if(config.control_port)
+            if(config->verbose) printf("starting as daemon\n");
+            if(config->control_port)
             {
                 // Daemonize this
-                daemonize(config.pidfile,0,0,0,0,0,0);
+                daemonize(config->pidfile,0,0,0,0,0,0);
 
                 // set global daemon flag
                 is_daemon=1;
@@ -715,69 +833,99 @@ int main(int argc, char **argv)
 
 
     // While active, take command and set relays
-	if(config.verbose) printf("Starting interactive command loop\n");	
+	if(config->verbose) printf("Starting interactive command loop\n");	
     while(go)
     {
-        int active;
-
-        if(config.control_port)
+        // do not process any more until hold time is over
+        if ((0 == config->hold_time) || (ms_count() - config->hold_start) > config->hold_time)
         {
-            //
-            // Wait on select, 100ms, chance YS to ms paramters
-            //
-            if(config.verbose>1)  printf("call select\n");
-            active = Yoics_Select(1000);
-            if(active)
+            if (config->control_port)
             {
-                char    *ret_str,cmd[127];
-                // Read command
-                ret_str=process_command(&config,cmd);
-                // back to socket not printf
-                printf("%s",ret_str);
-            }
-        }
-        else
-        {
-            char    *ret_str,cmd[127];
-            // stdio command processor
-
-            // Sleep for 10ms becaue we are not waiting on select, kbhit should be modified to take a timeout
-            // and we wouldnt need this
-            //
-            //ysleep_usec(10000);
-
-            // only check after hold time
-            //if((0==config.hold_time) ||  (hund_ms_count()-config.hold_start)>config.hold_time)
-            if((0==config.hold_time) ||  (ms_count()-config.hold_start)>config.hold_time)
-            {
-                config.hold_time=config.hold_start=0;
-                if(kbhit())
+                //
+                // Wait on select, 100ms, chance YS to ms paramters
+                //
+                if (config->verbose > 2)  printf("call select\n");
+                active = Yoics_Select(1000);
+                if (active)
                 {
-                    if(config.verbose) printf("kbhit\n");
-                    readln_from_a_file((FILE*)stdin, (char *)cmd, 128);
-                    ret_str=process_command(&config,cmd);
-                    printf("%s",ret_str);
-		            fflush(stdout);
-                    //config.on_time_start=hund_ms_count();
-                    config.on_time_start=ms_count();
+                    char    *ret_str, cmd[1024],replybuffer[1024];
+                    int     slen, ret;
+                    struct sockaddr_in	client;
+                    // Read command from udp socket
+                    memset(&client, '\0', sizeof(struct sockaddr));
+                    slen = sizeof(struct sockaddr_in);
+                    ret = recvfrom(config->control_soc, cmd, 1024 - 2, 0, (struct sockaddr *)&client, (socklen_t *)&slen);
+                    if (ret > 0)
+                    {
+                        cmd[ret] = 0;
+                        if (config->verbose > 1)  printf("Got %d bytes.\n", ret);
+                        //int add_client(RELAY_CONFIG *config, IPADDR ip, U16 port);
+                        add_client(config, &client);
+
+                        // we have a packet, let process it
+                        ret = process_command(config, cmd, replybuffer);
+                        //ret_str = process_command(config, cmd);
+
+                        send_status(config, replybuffer);
+                    }
+                    else
+                    {
+                        if (config->verbose > 1)  printf("no read active=%d\n", active);
+                    }
+
+
+                    //ret_str=process_command(config,cmd);
+                    // back to socket not printf
+                    if (config->verbose > 1) printf("%s", ret_str);
+                }
+            }
+            else
+            {
+                char    *ret_str, cmd[1024],replybuffer[1024];
+                int     ret;
+                // stdio command processor
+
+                // Sleep for 10ms becaue we are not waiting on select, kbhit should be modified to take a timeout
+                // and we wouldnt need this
+                //
+                //ysleep_usec(10000);
+
+                // only check after hold time
+                //if((0==config->hold_time) ||  (hund_ms_count()-config->hold_start)>config->hold_time)
+               // if((0==config->hold_time) ||  (ms_count()-config->hold_start)>config->hold_time)
+                //{
+                config->hold_time = config->hold_start = 0;
+                if (kbhit())
+                {
+                    if (config->verbose) printf("kbhit\n");
+                    readln_from_a_file((FILE*)stdin, (char *)cmd, 1024-2);
+                    //ret_str = process_command(config, cmd);
+
+                    ret = process_command(config, cmd, replybuffer);
+                    printf("%s", replybuffer);
+                    //printf("%s", ret_str);
+                    fflush(stdout);
+                    //config->on_time_start=hund_ms_count();
+                    config->on_time_start = ms_count();
                 }
                 else
                 {
                     //clear?
-                    clear_all(&config);
+                    clear_all(config);
                 }
+                //   }
             }
         }
 
-        //config.max_on_time
+        //config->max_on_time
         // Make sure everything is off based on max on time
-        //if((config.on_time_start) && ((hund_ms_count()-config.on_time_start)>config.max_on_time) )
-        if((config.on_time_start) && ((ms_count()-config.on_time_start)>config.max_on_time) )
+        //if((config->on_time_start) && ((hund_ms_count()-config->on_time_start)>config->max_on_time) )
+        if((config->on_time_start) && ((ms_count()-config->on_time_start)>config->max_on_time) )
 		{
 			
-			clear_all(&config);
+			clear_all(config);
 /*
-            config.on_time_start=0;
+            config->on_time_start=0;
 
 
             value=read_bitmask(&config);

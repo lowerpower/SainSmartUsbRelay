@@ -87,7 +87,49 @@ hexascii_2_bin(U8 *dest, int maxlen, char *in)
 }
 
 
+//
+// Make non destructive
+//
+void
+IP_Extract(IPADDR *ip,char *ip_ascii)
+{		
+#if defined(WIN32) || defined(WINCE)	
+	U8		*subst;
+	char	*strt_p;
+    char    tstr[64];
+    //char    *in=tstr;
 
+    assert(ip != NULL);
+    assert(ip_ascii != NULL);
+
+	ip->ip32=0;
+    strncpy(tstr,(char*)ip_ascii,63);
+    tstr[63]=0;
+
+	// scan out the bytes.
+	subst=(U8 *) strtok_r((char *) tstr,". \n",&strt_p);
+
+	while(1)
+	{
+		// get 4 bytes
+		if(!subst) break;
+		ip->ipb1 =	(U8)atoi((char *) subst);
+		subst= (U8 *) strtok_r(NULL,". \n",&strt_p);
+		if(!subst) break;
+		ip->ipb2 =	(U8)atoi((char *) subst);
+		subst= (U8 *) strtok_r(NULL,". \n",&strt_p);
+		if(!subst) break;
+		ip->ipb3 =	(U8)atoi((char *) subst);
+		subst= (U8 *) strtok_r(NULL,". \n",&strt_p);
+		if(!subst) break;
+		ip->ipb4 =	(U8)atoi((char *) subst);
+		break;
+	}
+#else
+	if(0==	inet_aton((const char *) ip_ascii, (struct in_addr *) ip )) 
+		ip->ip32=0;
+#endif
+}
 
 //
 // Convert a UID in asc format to binary (ie this format 00:00:2D:4A:7B:3E:1F:8B)

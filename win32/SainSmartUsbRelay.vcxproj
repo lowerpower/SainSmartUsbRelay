@@ -38,6 +38,7 @@
     <SccProjectName />
     <SccLocalPath />
     <ProjectName>SainSmartUsbRelay</ProjectName>
+    <ProjectGuid>{0D3240CA-1BA1-9EAD-C8C7-9A40AAB3EA78}</ProjectGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
