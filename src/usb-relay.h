@@ -68,6 +68,11 @@ typedef unsigned int  U32;
 #define SECTOR_SIZE     4096
 #define HID_PACKET_SIZE 64
 
+// Maximum relay boards to support
+#define MAX_RELAY_BOARDS    16
+// 4 hex bytes per 16 channel relay board
+#define STATE_SIZE          MAX_RELAY_BOARDS*4 
+
 #pragma pack(push)  /* push current alignment to stack */
 #pragma pack(1)
 typedef struct hid_command_
@@ -83,7 +88,6 @@ typedef struct hid_command_
 #pragma pack(pop)   /* restore original alignment from stack */
 
 
-#define MAX_RELAY_BOARDS    4
 
 // description of the relay
 typedef struct relay_
@@ -112,8 +116,10 @@ typedef struct relay_config_
     char        dev_dir[255];
     char        pidfile[255];
 
+    // number of bards to emulate
     int         emulate;
-    long long   emulation_state;
+    //long long   emulation_state;
+    char        emulation_state_string[STATE_SIZE];
 
     CONNECTIONS *connections;
 
@@ -131,11 +137,14 @@ typedef struct relay_config_
 }RELAY_CONFIG;
 
 
+int send_status_single(RELAY_CONFIG *config, char *message, IPADDR ip, U16 port);
+int send_status(RELAY_CONFIG *config, char *message);
 int is_device_relay(char *device_directory, char *device_name);
-long long read_bitmask(RELAY_CONFIG *config);
+//long long read_bitmask(RELAY_CONFIG *config);
+char *read_bitmask(RELAY_CONFIG *config);
 int read_current_state(int fd);
 const char *bus_str(int bus);
-
+int expire_clients(RELAY_CONFIG *config, int timeout_in_seconds);
 
 
 

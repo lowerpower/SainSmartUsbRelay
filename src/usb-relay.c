@@ -30,6 +30,7 @@ calculate_checksum(char * buffer, int len)
     return(checksum);
 }
 
+#if defined(REALY_HARDWARE)
 int
 send_command(int fd, HID_COMMAND *hid_cmd)
 {
@@ -131,7 +132,10 @@ read_data(int fd,char *buf, int buflen, int timeout)
         FD_SET(fd, &fds);
         // Wait on select        
         ret=select(fd+1, &fds, 0, NULL, &tv);
-        //printf("select returned %d, fd_max %d\n",ret,fd+1);
+        if (ret)
+        {
+            DEBUG1("select returned %d, fd_max %d\n", ret, fd + 1);
+        }
     }
     // read
     res = read(fd, buf, buflen);
@@ -278,13 +282,16 @@ int is_device_relay(char *device_directory, char *device_name)
     return(ret);
 }
 
+#endif
+
 int find_relay_devices(RELAY_CONFIG *config)
 {
     int ret=-1;
 	int fd;
+#if defined(LINUX)
     DIR *dp;
     struct dirent *ep;     
-
+#endif
 
     // if emulation, just set the estate and relay to active for the number of boards 
     //  specified.
@@ -303,7 +310,7 @@ int find_relay_devices(RELAY_CONFIG *config)
         }
         return(0);
     }
-
+#if defined(LINUX)
     // Open the devices directory
     dp = opendir (config->dev_dir);
 
@@ -357,12 +364,65 @@ int find_relay_devices(RELAY_CONFIG *config)
     }
     else
         perror ("Couldn't open the directory");
-
+#endif
     return(ret);
 }
 
+int
+extract_board_state(char *set_state, int board_number)
+{
+    int start,i;
+    int value = 0,tv;
+    int set_state_len = strlen(set_state);
+
+    // get the 4 bytes from the set state that corrispond to the board number
+    // IE set 3000200010000000 would be 4 boards with board 0=0000 and board 3=3000
+    start = board_number * 4;
+    for (i = start; i < start + 4, i<set_state_len; i++)
+    {
+        tv = hex2bin(set_state[i]);
+        tv = tv << (i * 4);
+        value += tv;
+    }
+   
+    return(value);
+}
+
+// support 16 boards, or increae the string
+char
+*write_bitmask(RELAY_CONFIG *config, char *set_state)
+{
+    int i;
+    int board_set_state;
+
+    for (i = 0; i < config->board_count; i++)
+    {
+        // get current state from set_state for board
+        board_set_state = extract_board_state(set_state, i);
+
+
+        if (config->verbose > 1) printf("writing to board %d bitmask %llx from raw %llx\n", i, board_set_state, board_set_state);
+
+        if (config->emulate)
+        {
+            // estate is the state for the particular relay
+            //config->relays[i].estate = 
+            config->relays[i].estate = board_set_state;
+            ysleep_usec(5000);
+        }
+        else
+        {
+#if defined(LINUX)
+            write_state(config->relays[i].fd, board_set_state, 1);
+#endif
+        }
+    }
+
+    return(read_bitmask(config));
+}
 
 // currently supports 4 board when compiled with 64 bit
+/*
 long long
 write_bitmask(RELAY_CONFIG *config,long long bitmask)
 {
@@ -382,7 +442,39 @@ int i;
     }
     return(read_bitmask(config));
 }
+*/
 
+char *
+read_bitmask(RELAY_CONFIG *config)
+{
+    int i,j;
+    char four_bytes[5];
+    int t, ret = 0;
+    int index = 0;
+    
+
+    // currently supports 4 board when compiled with 64 bit
+    //for (i = 0; i < config->board_count; i++)
+    for (i = config->board_count,j=0; i>0 ;i--,j++)
+    {
+        if (config->emulate)
+        {
+            t = config->relays[i-1].estate;
+
+            bin2hexstr(&t, &config->emulation_state_string[j * 4], 2);
+            ysleep_usec(1000);
+        }
+        else
+        {
+            //   t = read_current_state(config->relays[i].fd);
+            t = 0;
+        }
+       // ret |= (long long)(t << (i * 16));
+    }
+    return(config->emulation_state_string);
+}
+
+/*
 long long
 read_bitmask(RELAY_CONFIG *config)
 {
@@ -403,15 +495,20 @@ long long t,ret=0;
     }
     return(ret);
 }
+*/
+
 
 int
 sanity_test(RELAY_CONFIG *config)
 {
     int i;
+    char bit_string[STATE_SIZE];
 
     for(i=0;i<config->board_count*16;i++)
     {
-        write_bitmask(config,(long long)1<<i);
+       // write_bitmask(config,(long long)1<<i);
+        sprintf(bit_string, "%lx", (long long)1 << i);
+        write_bitmask(config, bit_string);
         ysleep_usec(500000);
     }
     return(0);
@@ -422,17 +519,21 @@ sanity_test(RELAY_CONFIG *config)
 
 // propose:
 //int *process_command(RELAY_CONFIG *config, char *cmd, chat *replybuffer)
-
+//
+// Returns -1 do not send anything
+//          0 send back to only the sender
+//          1 send back to all
+//
 int 
 process_command(RELAY_CONFIG *config, char *cmd, char *replybuffer)
 //char
 //*process_command(RELAY_CONFIG *config, char *cmd)
 {
+    int     ret = -1;
     char	*subst;
     char	*strt_p;
-    static char    return_message[1024];
 
-    return_message[0]=0;
+    replybuffer[0]=0;
 
     // parse in_buffer for command, we use while here so we can break on end of parse or error
 	while(strlen((char *) cmd)>0)
@@ -455,20 +556,25 @@ process_command(RELAY_CONFIG *config, char *cmd, char *replybuffer)
                     printf("shutting down by quit command\n");
             }
             go=0;
-            strcpy(return_message,"OK - shutting down\n");
+            strcpy(replybuffer,"shutting down (quit sent)\n");
+            ret = 1;
         }
         else if (0 == strcmp("disconnect", subst))
         {
-            strcpy(return_message, "disconnect\n");
+            strcpy(replybuffer, "disconnect\n");
+            ret = 0;
         }
         else if (0 == strcmp("ping", subst))
         {
-            strcpy(return_message, "pong\n");
+            strcpy(replybuffer, "pong\n");
+            ret = 0;
         }
         else if(0==strcmp("get",subst))
         {
             // Get Current State
-            sprintf(return_message,"%llx\n",read_bitmask(config));
+            sprintf(replybuffer, "%s\n", read_bitmask(config));
+            //sprintf(replybuffer,"%llx\n",read_bitmask(config));
+            ret = 0;
         }
         else if(0==strcmp("set",subst))
         {
@@ -476,16 +582,18 @@ process_command(RELAY_CONFIG *config, char *cmd, char *replybuffer)
             subst=strtok_r(NULL," \n",&strt_p);  
             if(0==subst)
             {
-                sprintf(return_message,"error - no value to set\n");
+                sprintf(replybuffer,"error - no value to set\n");
             }
             else
             {
                 long long value;
                 // set value
-                value=strtoll(subst, NULL, 16);
-                write_bitmask(config,value);
+                //value=strtoll(subst, NULL, 16);
+                write_bitmask(config,subst);
                 // read back
-                sprintf(return_message,"%llx\n",read_bitmask(config));
+                //sprintf(replybuffer,"%llx\n",read_bitmask(config));
+                sprintf(replybuffer, "%s\n", read_bitmask(config));
+                ret = 1;
 
                 // See if there is a hold time
                 subst=strtok_r(NULL," \n",&strt_p);  
@@ -498,34 +606,57 @@ process_command(RELAY_CONFIG *config, char *cmd, char *replybuffer)
                     syslog(LOG_INFO,"hold time %d",config->hold_time);
                     if(config->verbose>1)  printf(" hold time %d\n",config->hold_time);
                 }
+                // we set on-time-start on any set
+                config->on_time_start = ms_count();
             }
         }
         else if(0==strcmp("play",subst))
         {
             // Play A File
-            //sprintf(return_message,"%x\n",read_bitmask(config));
+            //sprintf(replybuffer,"%x\n",read_bitmask(config));
         }
         break;
     }
-    return(return_message);
+    return(ret);
 }
 
 
 void
 clear_all(RELAY_CONFIG *config)
 {
-    long long value;
+    char        *state;
+    int         ret,i;
 
 	config->on_time_start=0;
 
-    value=read_bitmask(config);
-    if(value!=0)
+    // check to make sure we are all zero
+
+    state=read_bitmask(config);
+
+    for(i=0;i<strlen(state);i++)
     {
-    	char    *ret_str,cmd[127];
-        strcpy(cmd,"set 0");
-        ret_str=process_command(config,cmd);
-        printf("%s",ret_str);
-        fflush(stdout);
+        if ('0' == state[i])
+            continue;
+        else
+        {
+            char    ret_str[256], cmd[127];
+            strcpy(cmd, "set 0");
+            ret = process_command(config, cmd, ret_str);
+
+            DEBUG1("process command of set 0 returned %d\n", ret);
+
+            if (config->control_port)
+            {
+                if (ret >= 0)
+                    send_status(config, ret_str);
+            }
+            else
+            {
+                printf("%s", ret_str);
+                fflush(stdout);
+            }
+        }
+        break;
     }
 }
 
@@ -579,22 +710,117 @@ add_client(RELAY_CONFIG *config, struct sockaddr_in *client)
 CONNECTIONS *
 lookup_client(RELAY_CONFIG *config, IPADDR ip, U16 port)
 {
-
+    return(0);
 }
 
 int
-remove_client(RELAY_CONFIG *config, CONNECTIONS *conn)
+remove_connection(RELAY_CONFIG *config, CONNECTIONS *remove_connection)
 {
+    CONNECTIONS *tconnection;
+    int         extracted = 0;
 
+    tconnection=config->connections;
+    // first extract the connection from the list
+    if ((tconnection) && (remove_connection))
+    {
+        if (tconnection == remove_connection)
+        {
+            // easy, at the head of the list
+            config->connections = tconnection->next;
+            extracted = 1;
+        }
+        else
+        {
+            // lets search through the list to remove the connection
+            while (tconnection->next)
+            {
+                if (tconnection->next == remove_connection)
+                {
+                    // found, remove
+                    tconnection->next = remove_connection->next;
+                    extracted = 1;
+                    break;
+                }
+                tconnection = tconnection->next;
+            }
+        }
+        if (extracted)
+        {
+            free(remove_connection);
+        }
+    }
+    else
+    {
+        printf("remove_connections: input is invalid, do nothing.\n");
+    }
+    return(extracted);
+}
+
+int
+expire_clients(RELAY_CONFIG *config, int timeout_in_seconds)
+{
+    CONNECTIONS *tconnection, *current_connection;
+    int ret = 0;
+
+    if (config->verbose > 1) printf("expire_called\n");
+
+    // loop through active connections and see if there is any processing to do.
+    tconnection = config->connections;
+
+    while (tconnection)
+    {
+        // setup working connection
+        current_connection = tconnection;
+        // and next connection (this is so we can cleanup easy witout loosing next item to process)
+        tconnection = tconnection->next;
+
+        // Check Timeout
+        if (((second_count() - current_connection->last_used) > timeout_in_seconds) || (0 == timeout_in_seconds))
+        {
+            if (config->verbose > 1) printf("connection has expired (port %d), lets cleanup\n",current_connection->port);
+            if (remove_connection(config, current_connection))
+            {
+                ret++;
+            }
+            else
+            {
+                printf("this should not happen, expire_clients\n");
+            }
+        }
+    }
+    return(ret);
+}
+
+
+int
+send_status_single(RELAY_CONFIG *config, char *message, IPADDR ip, U16 port)
+{
+    int     ret;
+    struct sockaddr_in peer;
+
+    // Setup Send
+    memset((void *)&peer, '\0', sizeof(struct sockaddr));
+    peer.sin_family = AF_INET;
+    peer.sin_addr.s_addr = ip.ip32;
+    peer.sin_port = htons(port);
+
+    // Do the send
+    ret = sendto(config->control_soc, (char *)message, strlen(message), 0, (struct sockaddr *)&peer, sizeof(struct sockaddr));
+    if (ret)
+    {
+    }
+    else if (ret < 1)
+    {
+    }
+    return(ret);
 }
 
 int
 send_status(RELAY_CONFIG *config, char *message)
 {
     int                 ret;
-    struct sockaddr_in	peer;				// Information about peer to send to 
     // Loop through and send back to all UDP endpoints that we have a listing for
-    CONNECTIONS *tconn = config->connections;
+    CONNECTIONS         *tconn = config->connections;
     int                 count = 0;
 
     if (strlen(message))
@@ -603,14 +829,7 @@ send_status(RELAY_CONFIG *config, char *message)
         // Loop through and send back to all UDP endpoints that we have a listing for
         while (tconn)
         {
-            // Setup Send
-            memset((void *)&peer, '\0', sizeof(struct sockaddr));
-            peer.sin_family = AF_INET;
-            peer.sin_addr.s_addr = tconn->ip.ip32;
-            peer.sin_port = htons(tconn->port);
-
-            // Do the send
-            ret = sendto(config->control_soc, (char *)message, strlen(message), 0, (struct sockaddr *)&peer, sizeof(struct sockaddr));
+            ret = send_status_single(config, message, tconn->ip, tconn->port);
             if (ret < 0)
             { 
                 // Failed to send
@@ -618,7 +837,7 @@ send_status(RELAY_CONFIG *config, char *message)
             else
             {
                 count++;
-                DEBUG1("count at %d\n", count);
+                //DEBUG1("count at %d\n", count);
             }
             tconn = tconn->next;
         }
@@ -691,6 +910,7 @@ int main(int argc, char **argv)
 {
 	int c, test=0;
     int active;
+    U32                   timer15;
     RELAY_CONFIG config_s;
     RELAY_CONFIG *config = &config_s;
    
@@ -752,7 +972,7 @@ int main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-
+    network_init();
 
     // First search /dev/hidraw* for relay devices
     if(config->verbose) printf ("Discover Relay Boards on USB bus\n");
@@ -787,6 +1007,7 @@ int main(int argc, char **argv)
         exit(0);
     }
 
+#if defined(LINUX)
     //
     // Should Daemonize here, only if we are UDP enabled
     //
@@ -830,7 +1051,9 @@ int main(int argc, char **argv)
 		signal (SIGXCPU , SIG_IGN);
 	if (signal (SIGXFSZ , termination_handler) == SIG_IGN)
 		signal (SIGXFSZ , SIG_IGN);
+#endif
 
+    timer15 = second_count();
 
     // While active, take command and set relays
 	if(config->verbose) printf("Starting interactive command loop\n");	
@@ -864,9 +1087,17 @@ int main(int argc, char **argv)
 
                         // we have a packet, let process it
                         ret = process_command(config, cmd, replybuffer);
-                        //ret_str = process_command(config, cmd);
-
-                        send_status(config, replybuffer);
+                        if (1==ret)
+                            send_status(config, replybuffer);
+                        else
+                        {
+                            IPADDR ip;
+                            U16     port;
+                            ip.ip32 = client.sin_addr.s_addr;
+                            port = htons(client.sin_port);
+                            // send only to current
+                            send_status_single(config, replybuffer, ip, port);
+                        }
                     }
                     else
                     {
@@ -876,12 +1107,12 @@ int main(int argc, char **argv)
 
                     //ret_str=process_command(config,cmd);
                     // back to socket not printf
-                    if (config->verbose > 1) printf("%s", ret_str);
+                    if (config->verbose > 1) printf("-->%s", replybuffer);
                 }
             }
             else
             {
-                char    *ret_str, cmd[1024],replybuffer[1024];
+                char    cmd[1024],replybuffer[1024];
                 int     ret;
                 // stdio command processor
 
@@ -898,15 +1129,19 @@ int main(int argc, char **argv)
                 if (kbhit())
                 {
                     if (config->verbose) printf("kbhit\n");
-                    readln_from_a_file((FILE*)stdin, (char *)cmd, 1024-2);
+                    readln_from_a_file((FILE*)stdin, (char *)cmd, 1024 - 2);
                     //ret_str = process_command(config, cmd);
 
-                    ret = process_command(config, cmd, replybuffer);
-                    printf("%s", replybuffer);
-                    //printf("%s", ret_str);
-                    fflush(stdout);
+                    ret=process_command(config, cmd, replybuffer);
+                    if (ret>=0)
+                    {
+                        if (config->verbose > 1) printf("blabal\n");
+                        printf("%s", replybuffer);
+                        //printf("%s", ret_str);
+                        fflush(stdout);
+                    }
                     //config->on_time_start=hund_ms_count();
-                    config->on_time_start = ms_count();
+                    //config->on_time_start = ms_count();
                 }
                 else
                 {
@@ -921,32 +1156,21 @@ int main(int argc, char **argv)
         // Make sure everything is off based on max on time
         //if((config->on_time_start) && ((hund_ms_count()-config->on_time_start)>config->max_on_time) )
         if((config->on_time_start) && ((ms_count()-config->on_time_start)>config->max_on_time) )
-		{
-			
-			clear_all(config);
-/*
-            config->on_time_start=0;
-
-
-            value=read_bitmask(&config);
-            // failsafe off            value=read_bitmask(config);
-            if(value!=0)
-            {
-                char    *ret_str,cmd[127];
-                strcpy(cmd,"set 0");
-                ret_str=process_command(&config,cmd);
-                printf("%s",ret_str);
-		        fflush(stdout);
-            }
-*/		
+		{			
+            if (config->verbose > 1) printf("clear config all\n");
+			clear_all(config);	
 		}
+        //
+        // Expire
+        //
+        // Every 15 seconds
+        if ((second_count() - timer15) >= 15)
+        {
+            timer15 = second_count();
+            expire_clients(config, 360);
+        }
     }
 
     exit(0);
-
-
 }
-
-
-
 

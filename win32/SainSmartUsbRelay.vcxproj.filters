@@ -33,6 +33,9 @@
     <ClCompile Include="..\src\daemonize.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\wingetopt.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\src\makefile">
@@ -68,6 +71,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\log.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\wingetopt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

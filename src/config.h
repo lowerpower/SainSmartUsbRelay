@@ -89,10 +89,10 @@
 
 #define usleep			Sleep
 
-#if defined(ZAVIO)
+//#if defined(ZAVIO)
 #define openlog(...) //	
 #define syslog(...) //
-#endif
+//#endif
 
 //#endif
 #endif
