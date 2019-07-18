@@ -1,3 +1,5 @@
+# I broke this, will fix soon
+
 # SainSmartUsbRelay
 C program to enumerate and control SainSmart 16 channel relay boards.  I created this software for the Reared In Steel Flower Tower Fire Effects for Burning Man.   I needed to gang multiple boards and control them as one unit.   This software enumerates all SainSmart USB boards and lets you controll up to 4 boards with one command.
 
