@@ -30,7 +30,7 @@ calculate_checksum(char * buffer, int len)
     return(checksum);
 }
 
-#if defined(REALY_HARDWARE)
+#if defined(LINUX)
 int
 send_command(int fd, HID_COMMAND *hid_cmd)
 {
@@ -378,10 +378,10 @@ extract_board_state(char *set_state, int board_number)
     // get the 4 bytes from the set state that corrispond to the board number
     // IE set 3000200010000000 would be 4 boards with board 0=0000 and board 3=3000
     start = board_number * 4;
-    for (i = start; i < start + 4, i<set_state_len; i++)
+    for (i = start; (i < start + 4 && i<set_state_len); i++)
     {
         tv = hex2bin(set_state[i]);
-        tv = tv << (i * 4);
+        tv = tv << ((3-(i-start)) * 4);
         value += tv;
     }
    
@@ -401,7 +401,7 @@ char
         board_set_state = extract_board_state(set_state, i);
 
 
-        if (config->verbose > 1) printf("writing to board %d bitmask %llx from raw %llx\n", i, board_set_state, board_set_state);
+        if (config->verbose > 1) printf("writing to board %d bitmask %x from raw %x\n", i, board_set_state, board_set_state);
 
         if (config->emulate)
         {
@@ -459,7 +459,9 @@ read_bitmask(RELAY_CONFIG *config)
     {
         if (config->emulate)
         {
-            t = config->relays[i-1].estate;
+            // we flip to network order here because a string is like network order
+            t = htons(config->relays[i-1].estate);
+            printf("=>%x\n", t);
 
             bin2hexstr(&t, &config->emulation_state_string[j * 4], 2);
             ysleep_usec(1000);
@@ -513,7 +515,24 @@ sanity_test(RELAY_CONFIG *config)
     }
     return(0);
 }
+//
+// Warning this assumes that passed string has buffer space of at least 3 chars before the passed pointer, in this case
+// we should only get here when there are 4 characters (IE set_)
+//
+char *padd_set_string(char *subst)
+{
+    int i,len,mod;
+    char *ret = subst;
 
+    len = strlen(subst);
+    // Padd
+    mod = len % 4;
+    for (i = 0; i < (4-mod); i++)
+    {
+        *--ret = '0';
+    }
+    return(ret);
+}
 
 // currently supports 4 board when compiled with 64 bit
 
@@ -586,10 +605,13 @@ process_command(RELAY_CONFIG *config, char *cmd, char *replybuffer)
             }
             else
             {
-                long long value;
+                int tlen;
+                char *set_string;
+                //subst needs to be padded out to multiple of 4
+                set_string = padd_set_string(subst);
                 // set value
                 //value=strtoll(subst, NULL, 16);
-                write_bitmask(config,subst);
+                write_bitmask(config,set_string);
                 // read back
                 //sprintf(replybuffer,"%llx\n",read_bitmask(config));
                 sprintf(replybuffer, "%s\n", read_bitmask(config));

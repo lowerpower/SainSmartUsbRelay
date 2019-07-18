@@ -9,8 +9,8 @@ CC = gcc
 # Where are include files kept
 INCLUDE =
 
-# Use this for Linux client software
-CDEFINE = -DLINUX -DI386 -D_GNU_SOURCE -DBACKTRACE_SYMBOLS
+# Use this for Linux client software 
+CDEFINE = -DLINUX -DI386 -D_GNU_SOURCE -DBACKTRACE_SYMBOLS 
 
 
 # Options for development
