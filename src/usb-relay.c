@@ -287,8 +287,8 @@ int is_device_relay(char *device_directory, char *device_name)
 int find_relay_devices(RELAY_CONFIG *config)
 {
     int ret=-1;
-	int fd;
 #if defined(LINUX)
+	int fd;
     DIR *dp;
     struct dirent *ep;     
 #endif
@@ -377,12 +377,17 @@ extract_board_state(char *set_state, int board_number)
 
     // get the 4 bytes from the set state that corrispond to the board number
     // IE set 3000200010000000 would be 4 boards with board 0=0000 and board 3=3000
-    start = board_number * 4;
-    for (i = start; (i < start + 4 && i<set_state_len); i++)
+    // 3456 7890 1234 5678 9012 3456 7890
+    // strlen 16 board 0 should be 12  board 1 should be 8 board 2 should be 4 board 3 should be 0
+    start = set_state_len-((board_number+1) * 4);
+    if (start >= 0)
     {
-        tv = hex2bin(set_state[i]);
-        tv = tv << ((3-(i-start)) * 4);
-        value += tv;
+        for (i = start; (i < start + 4 && i < set_state_len); i++)
+        {
+            tv = hex2bin(set_state[i]);
+            tv = tv << ((3 - (i - start)) * 4);
+            value += tv;
+        }
     }
    
     return(value);
@@ -448,11 +453,10 @@ char *
 read_bitmask(RELAY_CONFIG *config)
 {
     int i,j;
-    char four_bytes[5];
-    int t, ret = 0;
-    int index = 0;
-    
-
+    int t;
+    //ret = 0;
+    //int index = 0;
+   
     // currently supports 4 board when compiled with 64 bit
     //for (i = 0; i < config->board_count; i++)
     for (i = config->board_count,j=0; i>0 ;i--,j++)
@@ -461,9 +465,9 @@ read_bitmask(RELAY_CONFIG *config)
         {
             // we flip to network order here because a string is like network order
             t = htons(config->relays[i-1].estate);
-            printf("=>%x\n", t);
+           DEBUG1("board %d =>%x\n",i, t);
 
-            bin2hexstr(&t, &config->emulation_state_string[j * 4], 2);
+            bin2hexstr((char *)&t, &config->emulation_state_string[j * 4], 2);
             ysleep_usec(1000);
         }
         else
@@ -509,7 +513,7 @@ sanity_test(RELAY_CONFIG *config)
     for(i=0;i<config->board_count*16;i++)
     {
        // write_bitmask(config,(long long)1<<i);
-        sprintf(bit_string, "%lx", (long long)1 << i);
+        sprintf(bit_string, "%llx", (long unsigned long)1 << i);
         write_bitmask(config, bit_string);
         ysleep_usec(500000);
     }
@@ -605,16 +609,11 @@ process_command(RELAY_CONFIG *config, char *cmd, char *replybuffer)
             }
             else
             {
-                int tlen;
                 char *set_string;
                 //subst needs to be padded out to multiple of 4
                 set_string = padd_set_string(subst);
                 // set value
-                //value=strtoll(subst, NULL, 16);
-                write_bitmask(config,set_string);
-                // read back
-                //sprintf(replybuffer,"%llx\n",read_bitmask(config));
-                sprintf(replybuffer, "%s\n", read_bitmask(config));
+                sprintf(replybuffer, "%s\n", write_bitmask(config, set_string));
                 ret = 1;
 
                 // See if there is a hold time
@@ -784,7 +783,7 @@ expire_clients(RELAY_CONFIG *config, int timeout_in_seconds)
     CONNECTIONS *tconnection, *current_connection;
     int ret = 0;
 
-    if (config->verbose > 1) printf("expire_called\n");
+    if (config->verbose > 2) printf("expire_called\n");
 
     // loop through active connections and see if there is any processing to do.
     tconnection = config->connections;
@@ -1093,7 +1092,7 @@ int main(int argc, char **argv)
                 active = Yoics_Select(1000);
                 if (active)
                 {
-                    char    *ret_str, cmd[1024],replybuffer[1024];
+                    char    cmd[1024],replybuffer[1024];
                     int     slen, ret;
                     struct sockaddr_in	client;
                     // Read command from udp socket
