@@ -91,6 +91,7 @@ int hexascii_2_bin(U8 *dest, int maxlen, char *in);
 
 void bin2hexstr(char *buf, char *str, int len);
 void hexstr2bin(char *str, char *buf, int len);
+U8 hex2bin(U8 c);
 
 // same as bin2hexstr except put : inbetween bytes
 void bin2hexstrcol(char *buf, char *str, int len);
