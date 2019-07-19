@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.438
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "telnet_udp", "udpsend.vcxproj", "{29DA6DC9-C5F0-4C49-8963-169A1D62DCED}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{29DA6DC9-C5F0-4C49-8963-169A1D62DCED}.Debug|Win32.ActiveCfg = Debug|Win32
+		{29DA6DC9-C5F0-4C49-8963-169A1D62DCED}.Debug|Win32.Build.0 = Debug|Win32
+		{29DA6DC9-C5F0-4C49-8963-169A1D62DCED}.Release|Win32.ActiveCfg = Release|Win32
+		{29DA6DC9-C5F0-4C49-8963-169A1D62DCED}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {21323483-7DA1-4306-A44F-8E6198F98C03}
+	EndGlobalSection
+EndGlobal
