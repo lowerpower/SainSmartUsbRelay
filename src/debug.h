@@ -18,10 +18,10 @@
 //#define DEBUG_LV0	1
 #endif
 
-#define DEBUG_LV1	1
-#define DEBUG_LV2	1
-#define DEBUG_LV3	1
-#define DEBUG_LV4	1								/* memory debug, hash */
+//#define DEBUG_LV1	1
+//#define DEBUG_LV2	1
+//#define DEBUG_LV3	1
+//#define DEBUG_LV4	1								/* memory debug, hash */
 //#define DEBUG_LV5	1								/* everything else */
 //#define DEBUG_LV6	1								/*encryption*/
 //#define DEBUG_LV9	1								/*Misc temporary debug*/
