@@ -24,7 +24,7 @@ int _kbhit(void)
 	fd_set read_fd;
 
 	tv.tv_sec=0;
-	tv.tv_usec=0;
+	tv.tv_usec=100;
 
 	FD_ZERO(&read_fd);
 	FD_SET(0,&read_fd);
@@ -286,6 +286,8 @@ int main(int argc, char *argv[])
             {
                 message[ret]=0;
                 //printf("from-%s >> %s\n",inet_ntoa(client.sin_addr),message);
+                printf("%s",message);
+                fflush(stdout);
             }
 
             // check for input event (one for windows, one for linux/osx/unix)
