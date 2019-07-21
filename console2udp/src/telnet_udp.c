@@ -299,6 +299,8 @@ int main(int argc, char *argv[])
                 {
                     message[ret] = 0;
                     //printf("from-%s >> %s\n",inet_ntoa(client.sin_addr),message);
+                    printf("%s",message);
+                    fflush(stdout);
                 }
 
                 // check for input event (one for windows, one for linux/osx/unix)
