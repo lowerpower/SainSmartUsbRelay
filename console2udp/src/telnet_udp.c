@@ -13,6 +13,7 @@ Command line can send broadcast in addition to unicast
 #include "config.h"
 #include "net.h"
 #include "arch.h"
+#include "yselect.h"
 
 #define CMD_MAX_SIZE 1024
 
@@ -71,6 +72,8 @@ int main(int argc, char *argv[])
 	destport=1024;
 	// Standard Config
 	memset(message,0,4096);
+    //
+    Y_Init_Select();
 
 	//------------------------------------------------------------------
 	// Argument Scan command line args, first for -h -b
@@ -223,6 +226,10 @@ int main(int argc, char *argv[])
 
     // set nonblock
     set_sock_nonblock(sd);
+    Y_Set_Select_rx(sd);
+
+    // Do Stdin also
+    Y_Set_Select_rx(0);
 
 	if(strlen(message))
 	{
@@ -276,6 +283,47 @@ int main(int argc, char *argv[])
         // try interactive
 
         go=1;
+        while (go)
+        {
+            int rdy;
+
+            rdy = Y_Select(1000);
+            if (rdy)
+            {
+
+                // check for UDP socket read
+                memset(&client, '\0', sizeof(struct sockaddr));
+                slen = sizeof(struct sockaddr_in);
+                ret = recvfrom(sd, (char *)message, 1024, 0, (struct sockaddr *)&client, (socklen_t *)&slen);
+                if (ret > 0)
+                {
+                    message[ret] = 0;
+                    //printf("from-%s >> %s\n",inet_ntoa(client.sin_addr),message);
+                }
+
+                // check for input event (one for windows, one for linux/osx/unix)
+                if (_kbhit())
+                {
+                    // for now just readln
+                    ret = readln_from_a_file((FILE*)stdin, (char *)command_buffer, CMD_MAX_SIZE);
+
+                    if (ret)
+                    {
+                        // check for exit command?
+
+                        //
+                        server.sin_family = AF_INET;
+                        server.sin_addr.s_addr = ip.ip32;
+                        server.sin_port = htons((U16)(destport));
+                        // exit command?
+
+                        ret = sendto(sd, (char *)command_buffer, strlen(command_buffer), 0, (struct sockaddr *)&server, sizeof(struct sockaddr));
+                    }
+                }
+            }
+        }
+
+#if 0
         while(go)
         {
             // check for UDP socket read
@@ -308,6 +356,7 @@ int main(int argc, char *argv[])
                 }
             }
         }
+#endif
 
     }
 

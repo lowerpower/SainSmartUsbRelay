@@ -70,6 +70,7 @@
     <ClCompile Include="..\src\net.c" />
     <ClCompile Include="..\src\telnet_udp.c" />
     <ClCompile Include="..\src\webio.c" />
+    <ClCompile Include="..\src\yselect.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\src\makefile.linux" />
@@ -81,6 +82,7 @@
     <ClInclude Include="..\src\mytypes.h" />
     <ClInclude Include="..\src\net.h" />
     <ClInclude Include="..\src\webio.h" />
+    <ClInclude Include="..\src\yselect.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

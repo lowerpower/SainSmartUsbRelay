@@ -26,10 +26,10 @@ LIBS_INC        =
 # CFLAGS = -O -Wall -ansi
 
 #Dependancies for all
-DEPENDALL	= config.h mytypes.h debug.h
+DEPENDALL	= config.h mytypes.h debug.h yselect.h
 
 #Objects
-OBJ	= arch.o webio.o net.o telnet_udp.o
+OBJ	= arch.o webio.o net.o telnet_udp.o yselect.o
 
 $(TARGET): $(OBJ) 
 	$(CC) $(LINKFLAGS) $(TARGET) $(OBJ) $(LIBS)
