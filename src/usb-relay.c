@@ -850,6 +850,7 @@ send_status(RELAY_CONFIG *config, char *message)
         // Loop through and send back to all UDP endpoints that we have a listing for
         while (tconn)
         {
+        if (config->verbose > 1)  printf("send (port %d)->%s\n", tconn->port, message);
             ret = send_status_single(config, message, tconn->ip, tconn->port);
             if (ret < 0)
             { 
