@@ -331,14 +331,18 @@ int find_relay_devices(RELAY_CONFIG *config)
                         strcpy(config->relays[config->board_count].device,config->dev_dir);
                         strcat(config->relays[config->board_count].device,ep->d_name);
                         // initialze FD for this device
+
 	                    fd = open(config->relays[config->board_count].device, O_RDWR|O_NONBLOCK);
 
-	                    if (fd < 0) {
+	                    if (fd <= 0) {
 		                    perror("Unable to open device");
                             free(config->relays[config->board_count].device);
                             config->relays[config->board_count].device=0;
 		                    continue;
 	                    }
+
+                        DEBUG1("config board %d with fd %d\n",config->board_count,fd);
+
                         config->relays[config->board_count].fd=fd;
 
                         reset_board(fd);
@@ -418,7 +422,7 @@ char
         else
         {
 #if defined(LINUX)
-            write_state(config->relays[i].fd, board_set_state, 1);
+            write_state(config->relays[i].fd, htons(board_set_state), 1);
 #endif
         }
     }
@@ -465,15 +469,19 @@ read_bitmask(RELAY_CONFIG *config)
         {
             // we flip to network order here because a string is like network order
             t = htons(config->relays[i-1].estate);
-           DEBUG1("board %d =>%x\n",i, t);
+           DEBUG1("emu board %d =>%x\n",i, t);
 
             bin2hexstr((char *)&t, &config->emulation_state_string[j * 4], 2);
             ysleep_usec(1000);
         }
         else
         {
-            //   t = read_current_state(config->relays[i].fd);
-            t = 0;
+            printf("inread board= %d fd=%d\n",i-1,config->relays[i].fd);
+               t = read_current_state(config->relays[i-1].fd);
+           printf("read real beoard %d =>%x\n",i-1, t);
+
+            bin2hexstr((char *)&t, &config->emulation_state_string[j * 4], 2);
+            //t = 0;
         }
        // ret |= (long long)(t << (i * 16));
     }
