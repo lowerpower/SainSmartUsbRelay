@@ -422,7 +422,8 @@ char
         else
         {
 #if defined(LINUX)
-            write_state(config->relays[i].fd, htons(board_set_state), 1);
+            //write_state(config->relays[i].fd, htons(board_set_state), 1);
+            write_state(config->relays[i].fd, board_set_state, 1);
 #endif
         }
     }
@@ -477,7 +478,7 @@ read_bitmask(RELAY_CONFIG *config)
         else
         {
             printf("inread board= %d fd=%d\n",i-1,config->relays[i].fd);
-               t = read_current_state(config->relays[i-1].fd);
+               t = htons(read_current_state(config->relays[i-1].fd));
            printf("read real beoard %d =>%x\n",i-1, t);
 
             bin2hexstr((char *)&t, &config->emulation_state_string[j * 4], 2);

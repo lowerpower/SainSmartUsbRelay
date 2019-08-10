@@ -18,7 +18,7 @@
 //#define DEBUG_LV0	1
 #endif
 
-#define DEBUG_LV1	1
+//#define DEBUG_LV1	1
 //#define DEBUG_LV2	1
 //#define DEBUG_LV3	1
 //#define DEBUG_LV4	1								/* memory debug, hash */
