@@ -350,10 +350,10 @@ int find_relay_devices(RELAY_CONFIG *config)
                         // Set as active
                         config->relays[config->board_count].active=1;
 
+                        if(config->verbose) printf("setup relay board %d name %s.\n",config->board_count,config->relays[config->board_count].device);
+                        
                         // Inc count
                         ret=config->board_count++;
-
-                        if(config->verbose) printf("setup relay board %d.\n",config->board_count);
                     }
                     else
                     {
@@ -956,7 +956,7 @@ int main(int argc, char **argv)
     // Initialize config
     memset(config,0,sizeof(RELAY_CONFIG));    
     strcpy(config->dev_dir,"/dev/");
-    config->max_on_time=2500;                          // 2 seconds
+    config->max_on_time=1500;                          // 2 seconds
     //config->control_port=1026;                       // default UDP port 0 (off)
     
     // Parse Command Line
@@ -1119,7 +1119,9 @@ int main(int argc, char **argv)
                         // we have a packet, let process it
                         ret = process_command(config, cmd, replybuffer);
                         if (1==ret)
+                        {
                             send_status(config, replybuffer);
+                        }
                         else
                         {
                             IPADDR ip;
@@ -1139,6 +1141,11 @@ int main(int argc, char **argv)
                     //ret_str=process_command(config,cmd);
                     // back to socket not printf
                     if (config->verbose > 1) printf("-->%s", replybuffer);
+                }
+                else
+                {
+                    //clear all
+                    //clear_all(config);
                 }
             }
             else
