@@ -88,14 +88,14 @@ int ret=0;
         count=0;
         while(bitmask!=(res=read_current_state(fd)) )
         {
-            usleep(100000);
+            usleep(10000);
             if(count++>5)
             {
-                printf("failed to verify\n");
+                ytprintf("******* failed to verify\n");
                 ret=-1;
                 break;
             }
-            printf("retry %d\n",count);
+            ytprintf("* retry %d\n",count);
         }
     }
 
@@ -171,7 +171,7 @@ read_current_state(int fd)
 
     send_command(fd,&hid_cmd);
     //sleep(1);
-    ret=read_data(fd,buffer,128,2000);
+    ret=read_data(fd,buffer,128,100);
     //
     // Process buffer
     //printf("buffer = %x:%x \n",buffer[2],buffer[3]);
@@ -350,7 +350,7 @@ int find_relay_devices(RELAY_CONFIG *config)
                         // Set as active
                         config->relays[config->board_count].active=1;
 
-                        if(config->verbose) printf("setup relay board %d name %s.\n",config->board_count,config->relays[config->board_count].device);
+                        if(config->verbose) ytprintf("setup relay board %d name %s.\n",config->board_count,config->relays[config->board_count].device);
                         
                         // Inc count
                         ret=config->board_count++;
@@ -410,7 +410,7 @@ char
         board_set_state = extract_board_state(set_state, i);
 
 
-        if (config->verbose > 1) printf("writing to board %d bitmask %x from raw %x\n", i, board_set_state, board_set_state);
+        if (config->verbose > 1) ytprintf("writing to board %d bitmask %x from raw %x\n", i, board_set_state, board_set_state);
 
         if (config->emulate)
         {
@@ -440,7 +440,7 @@ int i;
     // currently supports 4 board when compiled with 64 bit
     for(i=0;i<config->board_count;i++)
     {
-        if(config->verbose>1) printf("writing to board %d bitmask %llx from raw %llx\n",i,(bitmask>>(i*16))&0xffff,bitmask);
+        if(config->verbose>1) ytprintf("writing to board %d bitmask %llx from raw %llx\n",i,(bitmask>>(i*16))&0xffff,bitmask);
 
         if(config->emulate)
         {
@@ -570,7 +570,7 @@ process_command(RELAY_CONFIG *config, char *cmd, char *replybuffer)
     // parse in_buffer for command, we use while here so we can break on end of parse or error
 	while(strlen((char *) cmd)>0)
     {
-        if(config->verbose>1)  printf("process command %s\n",cmd);
+        if(config->verbose>1)  ytprintf("process command %s\n",cmd);
         // Lets parse, if no subst, exit
         subst=strtok_r((char *) cmd," \n",&strt_p);
         if(0==subst)
@@ -585,7 +585,7 @@ process_command(RELAY_CONFIG *config, char *cmd, char *replybuffer)
                     syslog(LOG_INFO,"shutting down by quit command\n");
                 }
                 else
-                    printf("shutting down by quit command\n");
+                    ytprintf("shutting down by quit command\n");
             }
             go=0;
             strcpy(replybuffer,"shutting down (quit sent)\n");
@@ -634,7 +634,7 @@ process_command(RELAY_CONFIG *config, char *cmd, char *replybuffer)
                     //config->hold_start=hund_ms_count();
                     config->hold_start=ms_count();
                     syslog(LOG_INFO,"hold time %d",config->hold_time);
-                    if(config->verbose>1)  printf(" hold time %d\n",config->hold_time);
+                    if(config->verbose>1)  ytprintf(" hold time %d\n",config->hold_time);
                 }
                 // we set on-time-start on any set
                 config->on_time_start = ms_count();
@@ -682,7 +682,7 @@ clear_all(RELAY_CONFIG *config)
             }
             else
             {
-                printf("%s", ret_str);
+                ytprintf("%s", ret_str);
                 fflush(stdout);
             }
         }
@@ -710,7 +710,7 @@ add_client(RELAY_CONFIG *config, struct sockaddr_in *client)
         {
             tconn->last_used = second_count();
             ret=0;
-            if(config->verbose>1)  printf("timer reset, endpoint %d.%d.%d.%d:%d already exists\n", ip.ipb1,ip.ipb2,ip.ipb3,ip.ipb4,port);
+            if(config->verbose>2)  ytprintf("timer reset, endpoint %d.%d.%d.%d:%d already exists\n", ip.ipb1,ip.ipb2,ip.ipb3,ip.ipb4,port);
             break;
         }
         tconn = tconn->next;
@@ -726,11 +726,11 @@ add_client(RELAY_CONFIG *config, struct sockaddr_in *client)
             tconn->next = config->connections;
             tconn->last_used = second_count();
             config->connections = tconn;
-            if(config->verbose>1)  printf("added endpoint %d.%d.%d.%d:%d\n", ip.ipb1,ip.ipb2,ip.ipb3,ip.ipb4,port);
+            if(config->verbose>1)  ytprintf("added endpoint %d.%d.%d.%d:%d\n", ip.ipb1,ip.ipb2,ip.ipb3,ip.ipb4,port);
         }
         else
         {
-           if(config->verbose>1)  printf("FAILED: to added endpoint %d.%d.%d.%d:%d\n", ip.ipb1,ip.ipb2,ip.ipb3,ip.ipb4,port);
+           if(config->verbose>1)  ytprintf("FAILED: to added endpoint %d.%d.%d.%d:%d\n", ip.ipb1,ip.ipb2,ip.ipb3,ip.ipb4,port);
            ret = -1;
         }
     }
@@ -781,7 +781,7 @@ remove_connection(RELAY_CONFIG *config, CONNECTIONS *remove_connection)
     }
     else
     {
-        printf("remove_connections: input is invalid, do nothing.\n");
+        ytprintf("remove_connections: input is invalid, do nothing.\n");
     }
     return(extracted);
 }
@@ -792,7 +792,7 @@ expire_clients(RELAY_CONFIG *config, int timeout_in_seconds)
     CONNECTIONS *tconnection, *current_connection;
     int ret = 0;
 
-    if (config->verbose > 2) printf("expire_called\n");
+    if (config->verbose > 2) ytprintf("expire_called\n");
 
     // loop through active connections and see if there is any processing to do.
     tconnection = config->connections;
@@ -807,14 +807,14 @@ expire_clients(RELAY_CONFIG *config, int timeout_in_seconds)
         // Check Timeout
         if (((second_count() - current_connection->last_used) > timeout_in_seconds) || (0 == timeout_in_seconds))
         {
-            if (config->verbose > 1) printf("connection has expired (port %d), lets cleanup\n",current_connection->port);
+            if (config->verbose > 1) ytprintf("connection has expired (port %d), lets cleanup\n",current_connection->port);
             if (remove_connection(config, current_connection))
             {
                 ret++;
             }
             else
             {
-                printf("this should not happen, expire_clients\n");
+                ytprintf("this should not happen, expire_clients\n");
             }
         }
     }
@@ -855,11 +855,11 @@ send_status(RELAY_CONFIG *config, char *message)
 
     if (strlen(message))
     {
-        if (config->verbose > 1)  printf("send->%s\n", message);
+        if (config->verbose > 2)  ytprintf("send->%s", message);
         // Loop through and send back to all UDP endpoints that we have a listing for
         while (tconn)
         {
-        if (config->verbose > 1)  printf("send (port %d)->%s\n", tconn->port, message);
+        if (config->verbose > 1)  ytprintf("send (port %d)->%s", tconn->port, message);
             ret = send_status_single(config, message, tconn->ip, tconn->port);
             if (ret < 0)
             { 
@@ -941,6 +941,7 @@ int main(int argc, char **argv)
 {
 	int c, test=0;
     int active;
+    U32 last=0;
     U32                   timer15;
     RELAY_CONFIG config_s;
     RELAY_CONFIG *config = &config_s;
@@ -956,7 +957,7 @@ int main(int argc, char **argv)
     // Initialize config
     memset(config,0,sizeof(RELAY_CONFIG));    
     strcpy(config->dev_dir,"/dev/");
-    config->max_on_time=1500;                          // 2 seconds
+    config->max_on_time=1000;                          // 1 seconds
     //config->control_port=1026;                       // default UDP port 0 (off)
     
     // Parse Command Line
@@ -1085,7 +1086,7 @@ int main(int argc, char **argv)
 #endif
 
     timer15 = second_count();
-
+    last=ms_count();
     // While active, take command and set relays
 	if(config->verbose) printf("Starting interactive command loop\n");	
     while(go)
@@ -1098,8 +1099,7 @@ int main(int argc, char **argv)
                 //
                 // Wait on select, 100ms, chance YS to ms paramters
                 //
-                if (config->verbose > 2)  printf("call select\n");
-                active = Yoics_Select(1000);
+                active = Yoics_Select(250);
                 if (active)
                 {
                     char    cmd[1024],replybuffer[1024];
@@ -1112,7 +1112,8 @@ int main(int argc, char **argv)
                     if (ret > 0)
                     {
                         cmd[ret] = 0;
-                        if (config->verbose > 1)  printf("Got %d bytes.\n", ret);
+                        if (config->verbose > 1)  ytprintf("Got %d bytes (dtime=%u).\n", ret,ms_count()-last);
+                        last=ms_count();
                         //int add_client(RELAY_CONFIG *config, IPADDR ip, U16 port);
                         add_client(config, &client);
 
@@ -1134,18 +1135,27 @@ int main(int argc, char **argv)
                     }
                     else
                     {
-                        if (config->verbose > 1)  printf("no read active=%d\n", active);
+                        if (config->verbose > 1)  ytprintf("no read active=%d\n", active);
                     }
 
 
                     //ret_str=process_command(config,cmd);
                     // back to socket not printf
-                    if (config->verbose > 1) printf("-->%s", replybuffer);
+                    if (config->verbose > 1)
+                    {
+                        ytprintf("--->%s\n", replybuffer);
+                        fflush(stdout);
+                    }
                 }
                 else
                 {
-                    //clear all
-                    //clear_all(config);
+                    // if a hold time has been sent, and no followup, clear all.  If no hold time has been sent then wait for max time
+                    if (0 != config->hold_time)
+                    {
+                        if (config->verbose > 1) ytprintf("clear config after no follow (%u) \n",ms_count()-last);
+                        clear_all(config);
+                    }
+
                 }
             }
             else
@@ -1153,6 +1163,8 @@ int main(int argc, char **argv)
                 char    cmd[1024],replybuffer[1024];
                 int     ret;
                 // stdio command processor
+                if (config->verbose > 1) ytprintf("blabal\n");
+
 
                 // Sleep for 10ms becaue we are not waiting on select, kbhit should be modified to take a timeout
                 // and we wouldnt need this
@@ -1166,15 +1178,15 @@ int main(int argc, char **argv)
                 config->hold_time = config->hold_start = 0;
                 if (kbhit())
                 {
-                    if (config->verbose) printf("kbhit\n");
+                    if (config->verbose) ytprintf("kbhit\n");
                     readln_from_a_file((FILE*)stdin, (char *)cmd, 1024 - 2);
                     //ret_str = process_command(config, cmd);
 
                     ret=process_command(config, cmd, replybuffer);
                     if (ret>=0)
                     {
-                        if (config->verbose > 1) printf("blabal\n");
-                        printf("%s", replybuffer);
+                        if (config->verbose > 1) ytprintf("blabal\n");
+                        ytprintf("%s", replybuffer);
                         //printf("%s", ret_str);
                         fflush(stdout);
                     }
@@ -1184,10 +1196,22 @@ int main(int argc, char **argv)
                 else
                 {
                     //clear?
+                    if (config->verbose > 1) ytprintf("clear config after no kbhit\n");
                     clear_all(config);
                 }
                 //   }
             }
+        }
+        else
+        {
+            // sleep a small amount
+            U32 left = config->hold_time -(ms_count() - config->hold_start); 
+            
+            if (config->verbose > 1) ytprintf("left=%d\n",left);
+            if((left>1) && (left<500)) ysleep_usec(left*1000);
+            else 
+                ysleep_usec(1000);
+            if (config->verbose > 1) ytprintf("out\n",left);
         }
 
         //config->max_on_time
@@ -1195,7 +1219,7 @@ int main(int argc, char **argv)
         //if((config->on_time_start) && ((hund_ms_count()-config->on_time_start)>config->max_on_time) )
         if((config->on_time_start) && ((ms_count()-config->on_time_start)>config->max_on_time) )
 		{			
-            if (config->verbose > 1) printf("clear config all\n");
+            if (config->verbose > 1) ytprintf("clear config all\n");
 			clear_all(config);	
 		}
         //
@@ -1204,9 +1228,14 @@ int main(int argc, char **argv)
         // Every 15 seconds
         if ((second_count() - timer15) >= 15)
         {
+            if (config->verbose > 1) ytprintf("expire\n");
+                        fflush(stdout);
             timer15 = second_count();
             expire_clients(config, 360);
         }
+        //if (config->verbose > 1) ytprintf(".");
+        //                fflush(stdout);
+        
     }
 
     exit(0);
