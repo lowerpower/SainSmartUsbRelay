@@ -192,16 +192,21 @@ yprintf(const char *format, ...)
 void
 ytprintf(const char *format, ...)
 {
+    U32     count;
 	va_list args;
 
-    char *timestamp=timestamp_get();
-    trim(timestamp);
-    printf("%s - ",timestamp);
-    free(timestamp);
+    //char *timestamp=timestamp_get();
+    //trim(timestamp);
+    //printf("%s - ",timestamp);
+    //free(timestamp);
+    count=ms_count();
+    printf("[%u] ",count);
 
 	va_start(args, format);
     vprintf(format, args);
     va_end(args);
+
+    fflush(stdout);
 
 }
 
