@@ -83,12 +83,13 @@ int ret=0;
 
     send_command(fd,&hid_cmd);   
 
+/* mike no verify
     if(verify)
     {
         count=0;
         while(bitmask!=(res=read_current_state(fd)) )
         {
-            usleep(10000);
+            usleep(5000);
             if(count++>5)
             {
                 ytprintf("******* failed to verify\n");
@@ -98,7 +99,7 @@ int ret=0;
             ytprintf("* retry %d\n",count);
         }
     }
-
+*/
     return(ret);
 }
 
@@ -663,6 +664,7 @@ clear_all(RELAY_CONFIG *config)
 
     state=read_bitmask(config);
 
+    // if any bits are set we send a set 0
     for(i=0;i<strlen(state);i++)
     {
         if ('0' == state[i])
