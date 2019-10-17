@@ -1166,7 +1166,8 @@ int main(int argc, char **argv)
                         if (config->verbose > 1) ytprintf("clear config after no follow (%u) \n",ms_count()-last);
                         clear_all(config);
                     }
-
+                    // Keep the relay bus connection
+                    read_bitmask(config);
                 }
             }
             else
@@ -1221,8 +1222,10 @@ int main(int argc, char **argv)
             if (config->verbose > 1) ytprintf("left=%d\n",left);
             if((left>1) && (left<500)) ysleep_usec(left*1000);
             else 
-                ysleep_usec(1000);
+                ysleep_usec(100);
             if (config->verbose > 1) ytprintf("out\n",left);
+            // Keep the relay bus connection
+            read_bitmask(config);
         }
 
         //config->max_on_time
@@ -1236,8 +1239,8 @@ int main(int argc, char **argv)
         //
         // Expire
         //
-        // Every 15 seconds
-        if ((second_count() - timer15) >= 15)
+        // Every 45 seconds
+        if ((second_count() - timer15) >= 45)
         {
             if (config->verbose > 1) ytprintf("expire\n");
                         fflush(stdout);
