@@ -89,7 +89,7 @@ int ret=0;
         count=0;
         while(bitmask!=(res=read_current_state(fd)) )
         {
-            usleep(5000);
+            usleep(50);
             if(count++>5)
             {
                 ytprintf("******* failed to verify\n");
@@ -408,12 +408,13 @@ char
 {
     int i;
     int board_set_state;
+    U32 start;
 
+    start=ms_count();
     for (i = 0; i < config->board_count; i++)
     {
         // get current state from set_state for board
         board_set_state = extract_board_state(set_state, i);
-
 
         if (config->verbose > 1) ytprintf("writing to board %d bitmask %x from raw %x\n", i, board_set_state, board_set_state);
 
@@ -432,6 +433,8 @@ char
 #endif
         }
     }
+
+    if(config->verbose>1) printf("delta=%u\n",ms_count()-start);
 
     return(read_bitmask(config));
 }
@@ -466,7 +469,10 @@ read_bitmask(RELAY_CONFIG *config)
     int t;
     //ret = 0;
     //int index = 0;
-   
+    U32 start;
+
+    start=ms_count();
+
     // currently supports 4 board when compiled with 64 bit
     //for (i = 0; i < config->board_count; i++)
     for (i = config->board_count,j=0; i>0 ;i--,j++)
@@ -491,6 +497,9 @@ read_bitmask(RELAY_CONFIG *config)
         }
        // ret |= (long long)(t << (i * 16));
     }
+
+    if(config->verbose>1) printf("read_bitmask took %u\n",ms_count()-start);
+
     return(config->emulation_state_string);
 }
 
@@ -1113,7 +1122,7 @@ int main(int argc, char **argv)
                 //
                 // Wait on select, 100ms, chance YS to ms paramters
                 //
-                active = Yoics_Select(250);
+                active = Yoics_Select(350);
                 if (active)
                 {
                     char    cmd[1024],replybuffer[1024];
@@ -1170,6 +1179,7 @@ int main(int argc, char **argv)
                         clear_all(config);
                         config->hold_time=0;
                     }
+                    // Keep the relay bus connection
                     read_bitmask(config);
                 }
             }
@@ -1243,7 +1253,9 @@ int main(int argc, char **argv)
         // Expire
         //
         // Every 15 seconds
-        if ((second_count() - timer15) >= 545)
+        ////////////////if ((second_count() - timer15) >= 545)
+        // Every 45 seconds
+        if ((second_count() - timer15) >= 45)
         {
             if (config->verbose > 1) ytprintf("expire\n");
                         fflush(stdout);

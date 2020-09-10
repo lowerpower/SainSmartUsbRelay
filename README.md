@@ -1,6 +1,10 @@
-# I broke this, will fix soon
 
 # SainSmartUsbRelay
+*** UPDATE ***
+Realtime UDP control now fully tested and latency between command and control has been compleatly eliminated.  Many UDP controllers can be connected at the sametime to get instantanious updates and control.   We are currently using 7 16 channel relay boards in our current setup driving the relays with a 88 key MIDI keyboard, a MIDI controller and a realtime web interface using a combination of udptelnet with websocketd.  The startup 50ms latency problem has been resolved, latency is virtually eliminated while using UDP sockets to drive this software.
+
+-------
+
 C program to enumerate and control SainSmart 16 channel relay boards.  I created this software for the Reared In Steel Flower Tower Fire Effects for Burning Man.   I needed to gang multiple boards and control them as one unit.   This software enumerates all SainSmart USB boards and lets you controll up to 4 boards with one command.
 
 This software is still in flux and the UDP command control and Daemonize functions are completly untested.
