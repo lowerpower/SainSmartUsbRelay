@@ -83,7 +83,7 @@ int ret=0;
 
     send_command(fd,&hid_cmd);   
 
-/* mike no verify
+// mike no verify
     if(verify)
     {
         count=0;
@@ -99,7 +99,7 @@ int ret=0;
             ytprintf("* retry %d\n",count);
         }
     }
-*/
+//
     return(ret);
 }
 
@@ -325,6 +325,10 @@ int find_relay_devices(RELAY_CONFIG *config)
                 if(is_device_relay(config->dev_dir,ep->d_name))
                 {
                     // this is one of ours, lets store it
+                    // +++ check this
+                    if(config->relays[config->board_count].device)
+                        free(config->relays[config->board_count].device);
+
                     config->relays[config->board_count].device=malloc(strlen(ep->d_name)+strlen(config->dev_dir)+1);
                     if(config->relays[config->board_count].device)
                     {
@@ -579,6 +583,8 @@ process_command(RELAY_CONFIG *config, char *cmd, char *replybuffer)
         // Check Commands
         if(0==strcmp("quit",subst))
         {
+           //subst needs to be padded out to multiple of 4
+           clear_all(config);
             if(config->verbose)
             {
                 if(config->daemonize)
@@ -589,13 +595,19 @@ process_command(RELAY_CONFIG *config, char *cmd, char *replybuffer)
                     ytprintf("shutting down by quit command\n");
             }
             go=0;
-            strcpy(replybuffer,"shutting down (quit sent)\n");
+            //strcpy(replybuffer,"shutting down (quit sent)\n");
             ret = 1;
         }
         else if (0 == strcmp("disconnect", subst))
         {
             strcpy(replybuffer, "disconnect\n");
             ret = 0;
+        }
+        else if (0 == strcmp("reset",subst))
+        {
+            //find_relay_devices(config);
+            strcpy(replybuffer,"reset");
+            ret=0;
         }
         else if (0 == strcmp("ping", subst))
         {
@@ -959,7 +971,7 @@ int main(int argc, char **argv)
     // Initialize config
     memset(config,0,sizeof(RELAY_CONFIG));    
     strcpy(config->dev_dir,"/dev/");
-    config->max_on_time=1000;                          // 1 seconds
+    config->max_on_time=2000;                          // 1 seconds
     //config->control_port=1026;                       // default UDP port 0 (off)
     
     // Parse Command Line
@@ -1156,8 +1168,9 @@ int main(int argc, char **argv)
                     {
                         if (config->verbose > 1) ytprintf("clear config after no follow (%u) \n",ms_count()-last);
                         clear_all(config);
+                        config->hold_time=0;
                     }
-
+                    read_bitmask(config);
                 }
             }
             else
@@ -1210,10 +1223,12 @@ int main(int argc, char **argv)
             U32 left = config->hold_time -(ms_count() - config->hold_start); 
             
             if (config->verbose > 1) ytprintf("left=%d\n",left);
-            if((left>1) && (left<500)) ysleep_usec(left*1000);
+            if((left>1) && (left<50)) ysleep_usec(left*1000);
             else 
-                ysleep_usec(1000);
-            if (config->verbose > 1) ytprintf("out\n",left);
+                ysleep_usec(50);
+            //if (config->verbose > 1) ytprintf("out\n",left);
+            // Keep the relay bus connection
+            read_bitmask(config);
         }
 
         //config->max_on_time
@@ -1228,7 +1243,7 @@ int main(int argc, char **argv)
         // Expire
         //
         // Every 15 seconds
-        if ((second_count() - timer15) >= 15)
+        if ((second_count() - timer15) >= 545)
         {
             if (config->verbose > 1) ytprintf("expire\n");
                         fflush(stdout);
