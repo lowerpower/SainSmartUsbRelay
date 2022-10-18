@@ -15,7 +15,7 @@ Command line can send broadcast in addition to unicast
 #include "arch.h"
 #include "yselect.h"
 
-#define CMD_MAX_SIZE 1024
+#define CMD_MAX_SIZE 4096
 
 
 #if defined(LINUX) || defined(MACOSX)
@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     struct sockaddr_in	client;
 	struct hostent		*host_info;
 	IPADDR				ip,our_ip;
-	char				message[4096];
+	char				message[CMD_MAX_SIZE];
     char                command_buffer[CMD_MAX_SIZE];
     char	            *strt_p;
 	int                 broadcast = 1;	
@@ -281,6 +281,7 @@ int main(int argc, char *argv[])
 	else
 	{
         // try interactive
+		if (verbose) printf("Enter Interactive Mode\n");
 
         go=1;
         while (go)
@@ -294,18 +295,21 @@ int main(int argc, char *argv[])
                 // check for UDP socket read
                 memset(&client, '\0', sizeof(struct sockaddr));
                 slen = sizeof(struct sockaddr_in);
-                ret = recvfrom(sd, (char *)message, 1024, 0, (struct sockaddr *)&client, (socklen_t *)&slen);
+                ret = recvfrom(sd, (char *)message, CMD_MAX_SIZE, 0, (struct sockaddr *)&client, (socklen_t *)&slen);
                 if (ret > 0)
                 {
                     message[ret] = 0;
-                    //printf("from-%s >> %s\n",inet_ntoa(client.sin_addr),message);
+					if (verbose) 
+						printf("from-%s:%d >> %s\n", inet_ntoa(client.sin_addr), htons(client.sin_port),message);
+					else
+						printf("%s", message);
                 }
 
                 // check for input event (one for windows, one for linux/osx/unix)
                 if (_kbhit())
                 {
                     // for now just readln
-                    ret = readln_from_a_file((FILE*)stdin, (char *)command_buffer, CMD_MAX_SIZE);
+                    ret = readln_from_a_file((FILE*)stdin, (char *)command_buffer, CMD_MAX_SIZE-1);
 
                     if (ret)
                     {
@@ -316,6 +320,8 @@ int main(int argc, char *argv[])
                         server.sin_addr.s_addr = ip.ip32;
                         server.sin_port = htons((U16)(destport));
                         // exit command?
+						if (verbose)
+							printf("Sending Length %ld >>%s\n", strlen(command_buffer), command_buffer);
 
                         ret = sendto(sd, (char *)command_buffer, strlen(command_buffer), 0, (struct sockaddr *)&server, sizeof(struct sockaddr));
                     }
