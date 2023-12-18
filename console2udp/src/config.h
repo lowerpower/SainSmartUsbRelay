@@ -47,7 +47,8 @@
 #define _MT 
 #endif 
 //#ifndef  WIN32_LEAN_AND_MEAN 
-#include <winsock.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <windows.h>
 
 #include <process.h>    /* _beginthread, _endthread */
@@ -89,6 +90,9 @@
 #define EINVAL			WSAEINVAL
 #define EISCONN			WSAEISCONN
 #define ENOTCONN		WSAENOTCONN
+#define EMSGSIZE        WSAEMSGSIZE
+
+//WSAEFAULT
 
 #define usleep			Sleep
 
@@ -126,7 +130,7 @@
 #include <sched.h>
 #include <syslog.h>
 #include <ctype.h>
-#include <linux/limits.h>
+//#include <linux/limits.h>
 #include <dirent.h>
 
 #define MAX_PATH PATH_MAX

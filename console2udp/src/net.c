@@ -1654,7 +1654,7 @@ udp_listener(U16 port, IPADDR ip)
 		perror("error on bind\n");
 		printf("error on bind %d\n",get_last_error());
 		closesocket(new_soc);
-		return(-1);
+		return(INVALID_SOCKET);
 	}
 	//
 	// We are ready to go!

@@ -1,5 +1,5 @@
 
-TARGET	= udptelnet	
+TARGET	= udptelnet.s	
 
 all: $(TARGET)
 
@@ -16,9 +16,20 @@ CDEFINE = -DLINUX
 
 # Options for development
 CFLAGS		= $(INCLUDE) $(CDEFINE) -g -Wall -Os 
-LDFLAGS		=
 LINKFLAGS	= -o
 #OSXLINKFLAGS	= -arch i386 -arch ppc
+
+SHARED=yes
+#
+# If Shared or not
+#
+#ifeq ($(SHARED),yes)
+#LDFLAGS=-g
+#LDFLAGS+= -g
+#else
+LDFLAGS+= -v -Wl,-warn-common --static -lc -lresolv
+#endif
+
 
 LIBS            = 
 LIBS_INC        = 
@@ -29,10 +40,10 @@ LIBS_INC        =
 DEPENDALL	= config.h mytypes.h debug.h
 
 #Objects
-OBJ	= arch.o webio.o net.o telnet_udp.o
+OBJ	= arch.o webio.o net.o telnet_udp.o yselect.o
 
 $(TARGET): $(OBJ) 
-	$(CC) $(LINKFLAGS) $(TARGET) $(OBJ) $(LIBS)
+	$(CC) $(LDFLAGS) $(LINKFLAGS) $(TARGET) $(OBJ) $(LIBS)
 
 clean:
 	-rm *.o $(MYLIB)
