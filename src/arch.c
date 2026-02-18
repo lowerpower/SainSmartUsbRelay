@@ -332,7 +332,7 @@ void ysleep_seconds(U16 duration)
 void ysleep_usec(U32 duration)
 {
 #if defined(WIN32) || defined(WINCE)
-			Sleep(duration/100);  
+			Sleep(duration/1000);
 #endif
 
 #if defined(LINUX) || defined (MACOSX)

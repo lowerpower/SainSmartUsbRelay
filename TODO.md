@@ -25,7 +25,7 @@
 - [x] **H11** `console2udp/src/net.c:1263` — `memset` before NULL check on `malloc` result.
 - [x] **H12** `console2udp/src/net.c:1324` — `strcmp` logic inverted in HTTP response parsing.
 - [x] **H13** `console2udp/src/net.c:1425` — Stack overflow in `curl_get` via unbounded `sprintf`/`strcat`.
-- [ ] **H14** `console2udp/src/webio.c:117` — SSL verification disabled (`SSL_VERIFY_NONE`). Intentional for embedded use.
+- [x] **H14** `console2udp/src/webio.c:117` — SSL verification disabled (`SSL_VERIFY_NONE`). Documented as intentional for embedded targets without CA certs.
 
 ## MEDIUM
 
@@ -47,16 +47,16 @@
 - [x] **M16** `monitor.sh:73` — PID capture via `ps | grep` races and can match wrong process.
 - [x] **M17** `README.md:4,10` — Contradicts itself: "fully tested" vs "completely untested".
 - [x] **M18** `README.md:67` — Documents flag `-3` but actual flag is `-e`.
-- [ ] **M19** `src/makefile:28` — `DEPENDALL` defined but never used in rules. Header changes don't trigger rebuild.
+- [x] **M19** `src/makefile:28` — `DEPENDALL` defined but never used in rules. Header changes don't trigger rebuild.
 - [x] **M20** `src/makefile:39` — `$(MYLIB)` referenced but never defined.
 
 ## LOW
 
 - [x] **L1** `src/usb-relay.c:223-243` — `bus_str()` has unreachable `break` after `return`.
-- [ ] **L2** `src/usb-relay.c:763-767` — `lookup_client()` stub always returns NULL.
+- [x] **L2** `src/usb-relay.c:763-767` — `lookup_client()` stub always returns NULL. Dead code, never called.
 - [x] **L3** `src/usb-relay.c:770` — Parameter name `remove_connection` shadows function name.
-- [ ] **L4** `src/arch.c:335` — `ysleep_usec` divides by 100 instead of 1000 on Windows (10x too long).
-- [ ] **L5** `src/makefile:17` — `$(INCLUDE)` duplicated in CFLAGS.
+- [x] **L4** `src/arch.c:335` — `ysleep_usec` divides by 100 instead of 1000 on Windows (10x too long).
+- [x] **L5** `src/makefile:17` — `$(INCLUDE)` duplicated in CFLAGS. Fixed in prior commit.
 - [x] **L6** `src/makefile:28` — `yselect.h` listed twice in DEPENDALL; missing `config.h`, `arch.h`, `debug.h`, `log.h`.
-- [ ] **L7** `.gitignore` — Build artifacts (`.o`, binaries) tracked despite being in `.gitignore`.
-- [ ] **L8** `README.md` — ~17 spelling errors throughout.
+- [x] **L7** `.gitignore` — Build artifacts (`.o`, binaries) not actually tracked. Non-issue.
+- [x] **L8** `README.md` — ~17 spelling errors throughout.

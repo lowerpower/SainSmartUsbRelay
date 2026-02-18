@@ -31,7 +31,9 @@ DEPENDALL	= mytypes.h config.h arch.h net.h webio.h yselect.h usb-relay.h daemon
 OBJ	= usb-relay.o net.o webio.o arch.o log.o daemonize.o
 OBJ    += yselect.o
 
-$(TARGET): $(OBJ) 
+$(OBJ): $(DEPENDALL)
+
+$(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) $(LINKFLAGS) $(TARGET) $(OBJ) $(LIBS)
 	cp $(TARGET) .. 
 

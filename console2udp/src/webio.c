@@ -114,7 +114,7 @@ static int SSL_Init(ssl_context *p_ssl, ssl_session *p_ssn, havege_state *p_hs, 
 	ssl_set_dbg(p_ssl,my_debug, stderr);
 #endif	
 	ssl_set_endpoint(p_ssl, SSL_IS_CLIENT);
-	ssl_set_authmode(p_ssl, SSL_VERIFY_NONE);
+	ssl_set_authmode(p_ssl, SSL_VERIFY_NONE);	// NOTE: no CA certs available on embedded targets
 
 	//
 	// Seupt random number generator callback
