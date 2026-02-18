@@ -783,16 +783,16 @@ lookup_client(RELAY_CONFIG *config, IPADDR ip, U16 port)
 }
 
 int
-remove_connection(RELAY_CONFIG *config, CONNECTIONS *remove_connection)
+remove_connection(RELAY_CONFIG *config, CONNECTIONS *conn)
 {
     CONNECTIONS *tconnection;
     int         extracted = 0;
 
     tconnection=config->connections;
     // first extract the connection from the list
-    if ((tconnection) && (remove_connection))
+    if ((tconnection) && (conn))
     {
-        if (tconnection == remove_connection)
+        if (tconnection == conn)
         {
             // easy, at the head of the list
             config->connections = tconnection->next;
@@ -803,10 +803,10 @@ remove_connection(RELAY_CONFIG *config, CONNECTIONS *remove_connection)
             // lets search through the list to remove the connection
             while (tconnection->next)
             {
-                if (tconnection->next == remove_connection)
+                if (tconnection->next == conn)
                 {
                     // found, remove
-                    tconnection->next = remove_connection->next;
+                    tconnection->next = conn->next;
                     extracted = 1;
                     break;
                 }
@@ -815,7 +815,7 @@ remove_connection(RELAY_CONFIG *config, CONNECTIONS *remove_connection)
         }
         if (extracted)
         {
-            free(remove_connection);
+            free(conn);
         }
     }
     else
@@ -1231,9 +1231,10 @@ int main(int argc, char **argv)
         else
         {
             // sleep a small amount
-            U32 left = config->hold_time -(ms_count() - config->hold_start); 
-            
-            if (config->verbose > 1) ytprintf("left=%d\n",left);
+            U32 elapsed = ms_count() - config->hold_start;
+            U32 left = (elapsed < config->hold_time) ? config->hold_time - elapsed : 0;
+
+            if (config->verbose > 1) ytprintf("left=%u\n",left);
             if((left>1) && (left<50)) ysleep_usec(left*1000);
             else 
                 ysleep_usec(50);

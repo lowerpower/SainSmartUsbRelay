@@ -1069,7 +1069,7 @@ DEBUG4("get web resp3\n");
 		// Read HTTP response (-2 is would block)
 		while(-2==(ret=read_sock_line(soc,(U8*)buffer,MAX_WEB_BUFF)))
 		{
-			if(timeout>=breaker)
+			if(breaker>=timeout)
 				break;
 			if(-2==ret)
 				breaker++;
@@ -1107,7 +1107,7 @@ DEBUG4("get web resp3\n");
 		{
 			// No header requested, don't parse headers, just get to end of
 			// Get HTTP headers
-			while((ret=read_sock_line(soc,(U8*)buffer,MAX_WEB_BUFF)>0))   //read_sock_line(SOCKET sd, U8 *buffer, U16 size)
+			while((ret=read_sock_line(soc,(U8*)buffer,MAX_WEB_BUFF))>0)   //read_sock_line(SOCKET sd, U8 *buffer, U16 size)
 				DEBUG0("+> %s\n",buffer);
 
 		}
@@ -1118,7 +1118,7 @@ DEBUG4("get web resp3\n");
 			*header=0;
 			//l_header=0;
 			// Get HTTP headers
-			while((ret=read_sock_line(soc,(U8*)buffer,MAX_WEB_BUFF)>0))   //read_sock_line(SOCKET sd, U8 *buffer, U16 size)
+			while((ret=read_sock_line(soc,(U8*)buffer,MAX_WEB_BUFF))>0)   //read_sock_line(SOCKET sd, U8 *buffer, U16 size)
 			{
 				//char *saveptr1, *tptr;
 
@@ -1261,13 +1261,13 @@ U32					timestamp=second_count();
     TRACEIN;
 	// Malloc the response
 	resp=(HTTP_RESP*)malloc(sizeof(HTTP_RESP));
-	memset(resp,'\0',sizeof(HTTP_RESP));
 	if(resp)
 	{
+		memset(resp,'\0',sizeof(HTTP_RESP));
 		resp->header=(char*)malloc(WEB_RESP_HEADER_LEN);
 		if(resp->header)
 		{
-			memset(resp->header,'\0',sizeof(WEB_RESP_HEADER_LEN));
+			memset(resp->header,'\0',WEB_RESP_HEADER_LEN);
 		}
 		else
 		{
@@ -1321,7 +1321,7 @@ U32					timestamp=second_count();
 			// Check for a Good Response
 			//
 			// Parse Response in the format HTTP/1.1 200 OK
-			if(strcmp(buffer,"HTTP/1."))
+			if(0==strncmp(buffer,"HTTP/1.",7))
 			{
 				int	resp_text_len;
 				char parse_buffer[8];
@@ -1361,7 +1361,7 @@ U32					timestamp=second_count();
 			//
 			// Now Read the header  int read_sock_web_header(SOCKET sd, char * buffer, int len, int timeout)
 			//
-			ret=read_sock_web_header(soc, resp->header, resp->data_length, timeout-(second_count()-timestamp));
+			ret=read_sock_web_header(soc, resp->header, WEB_RESP_HEADER_LEN, timeout-(second_count()-timestamp));
 
             DEBUG2("resp header from read_sock_web_header :\n%s\n",resp->header);
 			// Good read get length
@@ -1423,7 +1423,6 @@ HTTP_RESP *curl_get(char *host, int port, char *uri, char *extheader, int timeou
 int         ret=0,time=0;
 SOCKET      soc=0;
 char        header[2048];
-char        tb[512];
 HTTP_RESP   *resp=0;
 
     TRACEIN;
@@ -1433,14 +1432,8 @@ HTTP_RESP   *resp=0;
         if(0==NetConnect1(host, port, timeout, &soc))
         {
             // Were connected, send request
-            sprintf(header,"GET %s HTTP/1.0\r\n",uri);
-		    sprintf(tb,"Host: %s\r\n",host);
-		    strcat(header,tb);
-		    strcat(header,"User-Agent: Yoics Embedded Web/0.3\r\n");
-            strcat(header,"Connection: close\r\n");
-            if(extheader)
-                strcat(header,extheader);
-            strcat(header,"\r\n");
+            snprintf(header,sizeof(header),"GET %s HTTP/1.0\r\nHost: %s\r\nUser-Agent: Yoics Embedded Web/0.3\r\nConnection: close\r\n%s\r\n",
+                uri, host, extheader ? extheader : "");
 
             DEBUG2("Request :\n%s\n",header);
 

@@ -380,6 +380,8 @@ int WebIOConnect(const char *pcServer, unsigned short usPort, int iMillSecTimeou
 
 						}
 						break;
+#else
+						break;
 #endif
 					}
 				}

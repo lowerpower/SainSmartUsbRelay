@@ -7,7 +7,7 @@
 
 
 // Header maxes out at 2K
-#define	WEB_RESP_HEADER_LEN		1024*2
+#define	WEB_RESP_HEADER_LEN		(1024*2)
 //
 // Http Header response, return the ret code, the header in a buffer and the data in a buffer, should free it after use
 //

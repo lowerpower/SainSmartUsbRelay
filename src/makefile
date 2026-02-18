@@ -25,7 +25,7 @@ LIBS_INC        =
 # CFLAGS = -O -Wall -ansi
 
 #Dependancies for all
-DEPENDALL	= mytypes.h yselect.h net.h webio.h yselect.h usb-relay.h daemonize.h
+DEPENDALL	= mytypes.h config.h arch.h net.h webio.h yselect.h usb-relay.h daemonize.h log.h debug.h
 
 #Objects
 OBJ	= usb-relay.o net.o webio.o arch.o log.o daemonize.o
@@ -36,7 +36,7 @@ $(TARGET): $(OBJ)
 	cp $(TARGET) .. 
 
 clean:
-	-rm *.o $(MYLIB)
+	-rm *.o
 	 rm -f *.map
 	 rm -f $(TARGET)
 

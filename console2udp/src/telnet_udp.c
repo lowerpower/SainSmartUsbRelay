@@ -158,10 +158,10 @@ int main(int argc, char* argv[])
 			{
 				// get proxy target IP		
 				subst = (U8*)strtok_r(argv[ci], ".\n", &strt_p);
-				if (strlen((char*)subst))
+				if (subst && strlen((char*)subst))
 					ip.ipb1 = atoi((char*)subst);
 				subst = (U8*)strtok_r(NULL, ".\n", &strt_p);
-				if (strlen((char*)subst))
+				if (subst && strlen((char*)subst))
 					ip.ipb2 = atoi((char*)subst);
 				subst = (U8*)strtok_r(NULL, ".\n", &strt_p);
 				if (subst)
@@ -239,7 +239,7 @@ int main(int argc, char* argv[])
 			int rdy;
 
 			// build message.
-			memset(message, '.', sizeof(CMD_MAX_SIZE));
+			memset(message, '.', CMD_MAX_SIZE);
 			// add the 't'
 			message[0] = 't';
 			//
@@ -327,7 +327,7 @@ int main(int argc, char* argv[])
 						}
 						else 
 						{
-							printf("current mtu %s  is less then last good mtu %d should not happen\n", current_mtu, last_good_mtu);			
+							printf("current mtu %d  is less then last good mtu %d should not happen\n", current_mtu, last_good_mtu);			
 						}
 					}
 					else

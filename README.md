@@ -7,7 +7,7 @@ Realtime UDP control now fully tested and latency between command and control ha
 
 C program to enumerate and control SainSmart 16 channel relay boards.  I created this software for the Reared In Steel Flower Tower Fire Effects for Burning Man.   I needed to gang multiple boards and control them as one unit.   This software enumerates all SainSmart USB boards and lets you controll up to 4 boards with one command.
 
-This software is still in flux and the UDP command control and Daemonize functions are completly untested.
+This software is still in flux and the Daemonize functions are not yet fully tested.
 
 ## To Build
 Clone into a directory, enter the source directory and type 'make'.  This will generate a binary called 'usb-relay'. You should not need any non standard or special librarys to build this software as it directly uses hidraw.  This has been build on raspberry pi's and Ubuntu desktops, but it should build and run on most linux systems.
@@ -64,7 +64,7 @@ set 1 5[enter]
 When a hold time is specified, the state will be immediatly returned, but the next command will not be processed until hold time has expired.  This allows control programes using websockets to be totally event drivin without having to rely on timer call backs.
 
 ### Emulating Relay Boards
-You can run the software without hardware when started in emulation mode.  This is enabled by specifing the -3 option on the command line with the number of boards you wish to emulate (valid range 1-4).  The number of relay boards will be virtually enumerated and allowed to be virtually set and read.
+You can run the software without hardware when started in emulation mode.  This is enabled by specifing the -e option on the command line with the number of boards you wish to emulate (valid range 1-4).  The number of relay boards will be virtually enumerated and allowed to be virtually set and read.
 
 ### Using Websocketd
 I discovered websocketd and used this instead of a more complex scheam I had initially contrived using UDP sockets and php.  Websocketd allows you to 'websocket' enable a stdio program.   Since I had built the interactive mode into this software, this mapped nicely to websockets.  You can enable this software with the following command:

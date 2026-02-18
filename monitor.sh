@@ -37,16 +37,16 @@ kill()
     local pid
 
     if [ -e "$PID" ]; then
-        pid2=`cat $PID`;
-        if [ -d /proc/$pid2 ]; then
-            echo "OK: $1 is running kill it" >> $LOGFILE
+        pid2=$(cat "$PID")
+        if [ -d "/proc/$pid2" ]; then
+            echo "OK: $1 is running kill it" >> "$LOGFILE"
 			command kill $pid2
 			sleep 3
         else
-            echo "FAIL: $1 is dead, cleanup pid file" >> $LOGFILE
+            echo "FAIL: $1 is dead, cleanup pid file" >> "$LOGFILE"
             rm "$PID"
         fi
-    fi    
+    fi
 
 }
 
@@ -59,21 +59,21 @@ isRunning()
     local pid
 
     if [ -e "$PID" ]; then
-        pid2=`cat $PID`;
-        if [ -d /proc/$pid2 ]; then
+        pid2=$(cat "$PID")
+        if [ -d "/proc/$pid2" ]; then
 			ret=1
         else
-            echo "FAIL: $1 is dead, cleanup pid file" >> $LOGFILE
+            echo "FAIL: $1 is dead, cleanup pid file" >> "$LOGFILE"
 			rm "$PID"
 		fi
       fi
       if [ ! -e "$PID" ]; then
       	# start it up
         "$BIN_DIR/run-$1" &
-        pid2=$(ps ax |grep "$1" |grep -v "grep" |awk '{ print $1 }')
-        echo $pid2 > $PID
+        pid2=$!
+        echo "$pid2" > "$PID"
         ret=0
-        echo "OK: $1 has started" >> $LOGFILE
+        echo "OK: $1 has started" >> "$LOGFILE"
       fi
     return $ret
 }
@@ -92,19 +92,19 @@ sleep 1
 while [ 1 ]
 do
 	# check if restart files are written
-    if [ -f $RESTART ]; then
+    if [ -f "$RESTART" ]; then
         logger "[FireMidi] restart"
-        echo "Restart All" >> $LOGFILE
-        rm $RESTART
-        killall $WEBSOCKETD
-        killall $USBRELAY
-        killall $MIDI
+        echo "Restart All" >> "$LOGFILE"
+        rm "$RESTART"
+        killall "$WEBSOCKETD"
+        killall "$USBRELAY"
+        killall "$MIDI"
         sleep 2
     fi
 
-    isRunning $WEBSOCKETD
-    isRunning $USBRELAY
-    isRunning $MIDI
+    isRunning "$WEBSOCKETD"
+    isRunning "$USBRELAY"
+    isRunning "$MIDI"
     # check ever 15 seconds
     sleep 15
 done
