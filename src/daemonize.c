@@ -109,9 +109,9 @@ daemonize(char *pidfile, char *user, char *dir, char* path, char* outfile, char*
 
 
     //reopen stdin, stdout, stderr
-    if(!freopen(infile,"r",stdin)  ||   //fd=0
-    freopen(outfile,"w+",stdout)   ||  //fd=1
-    freopen(errfile,"w+",stderr))  {  //fd=2
+    if(!freopen(infile,"r",stdin)   ||   //fd=0
+       !freopen(outfile,"w+",stdout) ||  //fd=1
+       !freopen(errfile,"w+",stderr)) {  //fd=2
         
         syslog(LOG_WARNING, "close std fds %s failed: %s\n",
             dir, strerror(errno));    

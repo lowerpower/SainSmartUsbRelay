@@ -40,7 +40,7 @@ kill()
         pid2=`cat $PID`;
         if [ -d /proc/$pid2 ]; then
             echo "OK: $1 is running kill it" >> $LOGFILE
-			kill $pid2
+			command kill $pid2
 			sleep 3
         else
             echo "FAIL: $1 is dead, cleanup pid file" >> $LOGFILE
@@ -82,7 +82,7 @@ isRunning()
 #
 # Init here
 logger "[FireMidi] monitor starting up"
-echo "Startig Up" >> $LOGFILE
+echo "Starting Up" >> $LOGFILE
 
 sleep 1
 

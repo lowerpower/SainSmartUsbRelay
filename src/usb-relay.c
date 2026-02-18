@@ -25,7 +25,7 @@ calculate_checksum(char * buffer, int len)
 
     for(i=0;i<len;i++)
     {
-        checksum=buffer[i];
+        checksum+=buffer[i];
     }
     return(checksum);
 }
@@ -81,7 +81,9 @@ int ret=0;
     hid_cmd.signature =HID_CMD_SIGNATURE;
     hid_cmd.checksum=0;
 
-    send_command(fd,&hid_cmd);   
+    ret = send_command(fd,&hid_cmd);
+    if (ret < 0)
+        return(ret);
 
 // mike no verify
     if(verify)
@@ -131,12 +133,14 @@ read_data(int fd,char *buf, int buflen, int timeout)
         //
         FD_ZERO(&fds);
         FD_SET(fd, &fds);
-        // Wait on select        
+        // Wait on select
         ret=select(fd+1, &fds, 0, NULL, &tv);
-        if (ret)
+        if (ret <= 0)
         {
-            DEBUG1("select returned %d, fd_max %d\n", ret, fd + 1);
+            // timeout or error
+            return(ret == 0 ? 0 : -1);
         }
+        DEBUG1("select returned %d, fd_max %d\n", ret, fd + 1);
     }
     // read
     res = read(fd, buf, buflen);
@@ -163,6 +167,8 @@ read_current_state(int fd)
     char    buffer[128];
     int     ret, value=0;
 
+    memset(buffer, 0, sizeof(buffer));
+
     hid_cmd.cmd=HID_CMD_READ;
     hid_cmd.len=sizeof(HID_COMMAND) - 4; /* Not include checksum */
     hid_cmd.arg1=0x11111111;
@@ -170,13 +176,15 @@ read_current_state(int fd)
     hid_cmd.signature =HID_CMD_SIGNATURE;
     hid_cmd.checksum=0;
 
-    send_command(fd,&hid_cmd);
+    ret = send_command(fd,&hid_cmd);
+    if (ret < 0)
+        return(0);
     //sleep(1);
     ret=read_data(fd,buffer,128,100);
     //
     // Process buffer
     //printf("buffer = %x:%x \n",buffer[2],buffer[3]);
-    if(ret)
+    if(ret > 0)
     {
         if(buffer[2]&0x80) value+=1;
         if(buffer[2]&0x40) value+=4;
@@ -202,11 +210,11 @@ read_current_state(int fd)
 
 
 
-int 
+int
 reset_board(int fd)
 {
     HID_COMMAND hid_cmd;
-    //char    buffer[128];
+    int ret;
 
     hid_cmd.cmd=HID_CMD_ERASE;
     hid_cmd.len=sizeof(hid_cmd) - sizeof(hid_cmd.checksum);             //(- checksum)
@@ -215,9 +223,9 @@ reset_board(int fd)
     hid_cmd.signature =HID_CMD_SIGNATURE;
     hid_cmd.checksum=0;
 
-    send_command(fd,&hid_cmd);
+    ret = send_command(fd,&hid_cmd);
 
-    return(0);
+    return(ret < 0 ? ret : 0);
 }
 
 const char *
@@ -226,19 +234,14 @@ bus_str(int bus)
 	switch (bus) {
 	case BUS_USB:
 		return "USB";
-		break;
 	case BUS_HIL:
 		return "HIL";
-		break;
 	case BUS_BLUETOOTH:
 		return "Bluetooth";
-		break;
 	case BUS_VIRTUAL:
 		return "Virtual";
-		break;
 	default:
 		return "Other";
-		break;
 	}
 }
 
@@ -251,9 +254,7 @@ int is_device_relay(char *device_directory, char *device_name)
     char device[256];
     struct hidraw_devinfo info;
 
-    //strcpy(device,"/dev/");
-    strcpy(device,device_directory);
-    strcat(device,device_name);
+    snprintf(device, sizeof(device), "%s%s", device_directory, device_name);
 
 	fd = open(device, O_RDWR|O_NONBLOCK);
 	//fd = open(device, O_RDWR);
@@ -322,6 +323,11 @@ int find_relay_devices(RELAY_CONFIG *config)
             // check if we got a device we are looking for hidraw*
             if(0==strncmp(ep->d_name,"hidraw",strlen("hidraw")) )
             {
+                if(config->board_count >= MAX_RELAY_BOARDS)
+                {
+                    ytprintf("WARNING: max relay boards (%d) reached, skipping additional devices\n", MAX_RELAY_BOARDS);
+                    break;
+                }
                 if(is_device_relay(config->dev_dir,ep->d_name))
                 {
                     // this is one of ours, lets store it
@@ -339,7 +345,7 @@ int find_relay_devices(RELAY_CONFIG *config)
 
 	                    fd = open(config->relays[config->board_count].device, O_RDWR|O_NONBLOCK);
 
-	                    if (fd <= 0) {
+	                    if (fd < 0) {
 		                    perror("Unable to open device");
                             free(config->relays[config->board_count].device);
                             config->relays[config->board_count].device=0;
@@ -536,7 +542,7 @@ sanity_test(RELAY_CONFIG *config)
     for(i=0;i<config->board_count*16;i++)
     {
        // write_bitmask(config,(long long)1<<i);
-        sprintf(bit_string, "%llx", (long unsigned long)1 << i);
+        sprintf(bit_string, "%llx", (unsigned long long)1 << i);
         write_bitmask(config, bit_string);
         ysleep_usec(500000);
     }
@@ -546,20 +552,27 @@ sanity_test(RELAY_CONFIG *config)
 // Warning this assumes that passed string has buffer space of at least 3 chars before the passed pointer, in this case
 // we should only get here when there are 4 characters (IE set_)
 //
-char *padd_set_string(char *subst)
+char *padd_set_string(char *subst, char *buf, int buflen)
 {
-    int i,len,mod;
-    char *ret = subst;
+    int len,mod,pad;
 
     len = strlen(subst);
-    // Padd
     mod = len % 4;
-    for (i = 0; i < (4-mod); i++)
-    {
-        *--ret = '0';
-    }
-    return(ret);
+    if (mod == 0)
+        pad = 0;
+    else
+        pad = 4 - mod;
+
+    if (pad + len + 1 > buflen)
+        pad = 0;
+
+    memset(buf, '0', pad);
+    memcpy(buf + pad, subst, len + 1);
+    return(buf);
 }
+
+// forward declaration
+void clear_all(RELAY_CONFIG *config);
 
 // currently supports 4 board when compiled with 64 bit
 
@@ -640,9 +653,10 @@ process_command(RELAY_CONFIG *config, char *cmd, char *replybuffer)
             }
             else
             {
+                char set_buf[STATE_SIZE+1];
                 char *set_string;
                 //subst needs to be padded out to multiple of 4
-                set_string = padd_set_string(subst);
+                set_string = padd_set_string(subst, set_buf, sizeof(set_buf));
                 // set value
                 sprintf(replybuffer, "%s\n", write_bitmask(config, set_string));
                 ret = 1;
@@ -696,6 +710,8 @@ clear_all(RELAY_CONFIG *config)
             strcpy(cmd, "set 0");
             ret = process_command(config, cmd, ret_str);
 
+            if (ret < 0)
+                ytprintf("WARNING: clear_all set 0 failed (ret=%d)\n", ret);
             DEBUG1("process command of set 0 returned %d\n", ret);
 
             if (config->control_port)
@@ -852,7 +868,7 @@ send_status_single(RELAY_CONFIG *config, char *message, IPADDR ip, U16 port)
     struct sockaddr_in peer;
 
     // Setup Send
-    memset((void *)&peer, '\0', sizeof(struct sockaddr));
+    memset((void *)&peer, '\0', sizeof(peer));
     peer.sin_family = AF_INET;
     peer.sin_addr.s_addr = ip.ip32;
     peer.sin_port = htons(port);
@@ -932,31 +948,15 @@ void usage(int argc, char **argv)
 void
 termination_handler(int signum)
 {
-
     go = 0;
 
-    if ((SIGFPE == signum) || (SIGSEGV == signum) || (11 == signum))
+    if ((SIGFPE == signum) || (SIGSEGV == signum))
     {
-        yprintf("Terminated from Signal %d\n", signum);
-        if (is_daemon) syslog(LOG_ERR, "Terminated from Signal 11\n");
-
-#if defined(BACKTRACE_SYMBOLS)
-        {
-            // addr2line?                
-            void* callstack[128];
-            int i, frames = backtrace(callstack, 128);
-            char** strs = backtrace_symbols(callstack, frames);
-            yprintf("backtrace:\n");
-            for (i = 0; i < frames; ++i)
-            {
-                yprintf("T->%s\n", strs[i]);
-                if (is_daemon)  syslog(LOG_ERR, "T->%s\n", strs[i]);
-            }
-            free(strs);
-            fflush(stdout);
-        }
-#endif
-        exit(11);
+        // Only use async-signal-safe functions in signal handlers.
+        // write() and _exit() are safe; printf/syslog/malloc are not.
+        const char msg[] = "Terminated from fatal signal\n";
+        if (write(STDERR_FILENO, msg, sizeof(msg) - 1)) {/* best effort */}
+        _exit(11);
     }
 }
 
@@ -1028,6 +1028,7 @@ int main(int argc, char **argv)
 	argv += optind;
 
     network_init();
+    Yoics_Init_Select();
 
     // First search /dev/hidraw* for relay devices
     if(config->verbose) printf ("Discover Relay Boards on USB bus\n");

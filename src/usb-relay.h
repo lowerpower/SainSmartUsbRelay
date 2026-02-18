@@ -71,7 +71,7 @@ typedef unsigned int  U32;
 // Maximum relay boards to support
 #define MAX_RELAY_BOARDS    16
 // 4 hex bytes per 16 channel relay board
-#define STATE_SIZE          MAX_RELAY_BOARDS*4 
+#define STATE_SIZE          (MAX_RELAY_BOARDS*4)
 
 #pragma pack(push)  /* push current alignment to stack */
 #pragma pack(1)
@@ -119,7 +119,7 @@ typedef struct relay_config_
     // number of bards to emulate
     int         emulate;
     //long long   emulation_state;
-    char        emulation_state_string[STATE_SIZE];
+    char        emulation_state_string[STATE_SIZE+1];
 
     CONNECTIONS *connections;
 

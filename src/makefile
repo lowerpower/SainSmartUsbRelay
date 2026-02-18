@@ -14,7 +14,7 @@ CDEFINE = -DLINUX -DI386 -D_GNU_SOURCE -DBACKTRACE_SYMBOLS
 
 
 # Options for development
-CFLAGS		= $(INCLUDE) $(CDEFINE) -g -Wall -Os $(INCLUDE)
+CFLAGS		= $(INCLUDE) $(CDEFINE) -g -Wall -Os -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security
 LDFLAGS		= 
 LINKFLAGS	= -o 
 

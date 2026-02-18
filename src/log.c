@@ -73,7 +73,7 @@ printlog(U32 levelmask, const char *fmt, ...)
                 return -1;
                
         va_start(args, fmt);
-        vsprintf(buffer, fmt, args);
+        vsnprintf(buffer, sizeof(buffer), fmt, args);
         va_end(args);
         
         fprintf(fp, "%s", buffer);
@@ -132,7 +132,7 @@ yprintf(const char *fmt, ...)
 		buff=printf_buffer;
 
 	va_start(args, fmt);
-	vsprintf(buff, fmt, args);
+	vsnprintf(buff, MAX_PRINTF_BUFFER - (buff - printf_buffer), fmt, args);
 	va_end(args);
 	
 	// Check if logging is enabled

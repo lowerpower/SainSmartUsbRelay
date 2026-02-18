@@ -632,7 +632,9 @@ void trim(char * s)
     char * p = s;
     int l = strlen(p);
 
-    while(isspace(p[l - 1])) p[--l] = 0;
+    if (l == 0) return;
+
+    while(l > 0 && isspace(p[l - 1])) p[--l] = 0;
     while(* p && isspace(* p)) ++p, --l;
 
     memmove(s, p, l + 1);
@@ -725,7 +727,7 @@ void bin2hexstr(char *buf, char *str, int len)
   int i;
 
   // check nulls
-  assert( (NULL!=buf) || (NULL!=str));
+  assert( (NULL!=buf) && (NULL!=str));
   // zero it in case len is zero
   str[0]=0;
 
@@ -751,7 +753,7 @@ void bin2hexstrcol(char *buf, char *str, int len)
   int i;
 
   // check nulls
-  assert( (NULL!=buf) || (NULL!=str));
+  assert( (NULL!=buf) && (NULL!=str));
   // zero it in case len is zero
   str[0]=0;
 
@@ -778,7 +780,7 @@ void bin2hexstrlcol(char *buf, int len, char *str, int strlen)
   int i,j;
 
   // check nulls
-  assert( (NULL!=buf) || (NULL!=str));
+  assert( (NULL!=buf) && (NULL!=str));
 
   // zero it in case strlen is zero
   str[0]=0;
@@ -813,7 +815,7 @@ void hexstr2bin(char *str, char *buf, int len)
   int i;//,j;
 
   // check nulls
-  assert( (NULL!=buf) || (NULL!=str) );
+  assert( (NULL!=buf) && (NULL!=str) );
 
   /* convert the hex string to a byte array */
   memset(buf, 0, len);
@@ -839,7 +841,7 @@ void hexstr2bin2(char *str, char *buf, int len)
   int i;//,j;
 
   // check nulls
-  assert( (NULL!=buf) || (NULL!=str) );
+  assert( (NULL!=buf) && (NULL!=str) );
 
   /* convert the hex string to a byte array */
   memset(buf, 0, len);
@@ -968,7 +970,7 @@ readln_from_a_buffer(char* buffer, char *line, int size)
     // flush rest of line this line if we still have non end/ret
     if(( '\r' != *p )&&( '\n' != *p )&&( 0 != *p ) )
     {
-        while( ( '\r' != *p )||( '\n' != *p )||( 0 != *p ) )
+        while( ( '\r' != *p )&&( '\n' != *p )&&( 0 != *p ) )
             p++;
     }
     // flush returns
