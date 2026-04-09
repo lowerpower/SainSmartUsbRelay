@@ -480,6 +480,7 @@ int main(int argc, char* argv[])
 							printf("from-%s:%d len %d >> %s\n", inet_ntoa(client.sin_addr), htons(client.sin_port), ret, message);
 						else
 							printf("%s", message);
+						fflush(stdout);
 					}
 
 					// check for input event (one for windows, one for linux/osx/unix)
@@ -548,4 +549,3 @@ int main(int argc, char* argv[])
 
 	exit(0);
 }
-
