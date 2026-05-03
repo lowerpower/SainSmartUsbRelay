@@ -421,14 +421,12 @@ char
     {
         // get current state from set_state for board
         board_set_state = extract_board_state(set_state, i);
+        config->relays[i].estate = board_set_state;
 
         if (config->verbose > 1) ytprintf("writing to board %d bitmask %x from raw %x\n", i, board_set_state, board_set_state);
 
         if (config->emulate)
         {
-            // estate is the state for the particular relay
-            //config->relays[i].estate = 
-            config->relays[i].estate = board_set_state;
             ysleep_usec(5000);
         }
         else
@@ -483,24 +481,14 @@ read_bitmask(RELAY_CONFIG *config)
     //for (i = 0; i < config->board_count; i++)
     for (i = config->board_count,j=0; i>0 ;i--,j++)
     {
+        // Use the commanded state shadow for status replies. Hardware readback
+        // is unreliable on some boards even when writes succeed.
+        t = htons(config->relays[i-1].estate);
+        DEBUG1("shadow board %d =>%x\n",i, t);
+
+        bin2hexstr((char *)&t, &config->emulation_state_string[j * 4], 2);
         if (config->emulate)
-        {
-            // we flip to network order here because a string is like network order
-            t = htons(config->relays[i-1].estate);
-           DEBUG1("emu board %d =>%x\n",i, t);
-
-            bin2hexstr((char *)&t, &config->emulation_state_string[j * 4], 2);
             ysleep_usec(1000);
-        }
-        else
-        {
-            //printf("inread board= %d fd=%d\n",i-1,config->relays[i].fd);
-               t = htons(read_current_state(config->relays[i-1].fd));
-           //printf("read real beoard %d =>%x\n",i-1, t);
-
-            bin2hexstr((char *)&t, &config->emulation_state_string[j * 4], 2);
-            //t = 0;
-        }
        // ret |= (long long)(t << (i * 16));
     }
 
@@ -1271,4 +1259,3 @@ int main(int argc, char **argv)
 
     exit(0);
 }
-
