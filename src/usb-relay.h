@@ -96,6 +96,7 @@ typedef struct relay_
     int     fd;
     int     active;     
     int     estate;
+    int     written_valid;  // 1 when estate is known to be on the board (last write succeeded)
 }RELAY;
 
 typedef struct connections_
@@ -132,6 +133,7 @@ typedef struct relay_config_
     //
     U32         on_time_start;
     U32         max_on_time;                            // in 100's of ms (tenths of a second)
+    int         force_write;                            // write every board on the next set (clear_all)
 
     struct relay_ relays[MAX_RELAY_BOARDS];
 }RELAY_CONFIG;

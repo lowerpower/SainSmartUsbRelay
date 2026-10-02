@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-02 — Write only changed boards
+
+- `set` now writes only boards whose 16-bit state changed (each board write is a HID write plus a verify read). A board whose last write or verify failed is always rewritten. `src/usb-relay.c`, `src/usb-relay.h`
+- `clear_all()` (failsafe, quit) still writes every board, and now also runs when any board's state is unconfirmed. `src/usb-relay.c`
+
 ## 2026-02-17 — Code Audit & Bug Fix Release
 
 Full security and correctness audit of the entire codebase. 66 issues identified and resolved across `src/`, `console2udp/`, build scripts, and documentation.

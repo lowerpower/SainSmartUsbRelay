@@ -419,8 +419,20 @@ char
     start=ms_count();
     for (i = 0; i < config->board_count; i++)
     {
+        int ret = 0;
+
         // get current state from set_state for board
         board_set_state = extract_board_state(set_state, i);
+
+        // Only write boards whose state changed. Each board write is a USB HID
+        // write plus a verify read, so skipping unchanged boards keeps a set fast.
+        // A board whose last write failed is always rewritten.
+        if (!config->force_write && config->relays[i].written_valid &&
+            (config->relays[i].estate == board_set_state))
+        {
+            continue;
+        }
+
         config->relays[i].estate = board_set_state;
 
         if (config->verbose > 1) ytprintf("writing to board %d bitmask %x from raw %x\n", i, board_set_state, board_set_state);
@@ -433,9 +445,10 @@ char
         {
 #if defined(LINUX)
             //write_state(config->relays[i].fd, htons(board_set_state), 1);
-            write_state(config->relays[i].fd, board_set_state, 1);
+            ret = write_state(config->relays[i].fd, board_set_state, 1);
 #endif
         }
+        config->relays[i].written_valid = (ret >= 0) ? 1 : 0;
     }
 
     if(config->verbose>1) printf("delta=%u\n",ms_count()-start);
@@ -687,7 +700,15 @@ clear_all(RELAY_CONFIG *config)
 
     state=read_bitmask(config);
 
-    // if any bits are set we send a set 0
+    // if any bits are set, or any board's state is unconfirmed, we send a set 0
+    {
+        int unconfirmed = 0;
+        for (i = 0; i < config->board_count; i++)
+            if (!config->relays[i].written_valid)
+                unconfirmed = 1;
+        if (unconfirmed)
+            state = "1";    // force the set 0 below
+    }
     for(i=0;i<strlen(state);i++)
     {
         if ('0' == state[i])
@@ -696,7 +717,10 @@ clear_all(RELAY_CONFIG *config)
         {
             char    ret_str[256], cmd[127];
             strcpy(cmd, "set 0");
+            // safety shutoff writes every board, not just changed ones
+            config->force_write = 1;
             ret = process_command(config, cmd, ret_str);
+            config->force_write = 0;
 
             if (ret < 0)
                 ytprintf("WARNING: clear_all set 0 failed (ret=%d)\n", ret);
