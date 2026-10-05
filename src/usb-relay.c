@@ -159,6 +159,7 @@ read_data(int fd,char *buf, int buflen, int timeout)
 
 //
 // read the relays current state of one board
+// Returns the 16-bit state, or -1 if the read command or reply failed.
 //
 int 
 read_current_state(int fd)
@@ -178,9 +179,13 @@ read_current_state(int fd)
 
     ret = send_command(fd,&hid_cmd);
     if (ret < 0)
-        return(0);
+        return(-1);
     //sleep(1);
     ret=read_data(fd,buffer,128,100);
+    // A failed or timed-out read must not look like "all relays off" (0),
+    // or a verify of a zero write would pass without reading anything.
+    if (ret < 4)
+        return(-1);
     //
     // Process buffer
     //printf("buffer = %x:%x \n",buffer[2],buffer[3]);

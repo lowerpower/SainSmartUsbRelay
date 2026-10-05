@@ -4,6 +4,7 @@
 
 - `set` now writes only boards whose 16-bit state changed (each board write is a HID write plus a verify read). A board whose last write or verify failed is always rewritten. `src/usb-relay.c`, `src/usb-relay.h`
 - `clear_all()` (failsafe, quit) still writes every board, and now also runs when any board's state is unconfirmed. `src/usb-relay.c`
+- `read_current_state()` returns -1 when the read command or reply fails, instead of 0. A failed verify of a zero write no longer counts as confirmed, so `clear_all()` keeps retrying that board. `src/usb-relay.c`
 
 ## 2026-02-17 — Code Audit & Bug Fix Release
 
