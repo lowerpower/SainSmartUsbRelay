@@ -5,6 +5,7 @@
  *
  */
 
+#include <ctype.h>
 #include "usb-relay.h"
 //#include "net.h"
 //#include "yselect.h"
@@ -432,7 +433,7 @@ char
         // Only write boards whose state changed. Each board write is a USB HID
         // write plus a verify read, so skipping unchanged boards keeps a set fast.
         // A board whose last write failed is always rewritten.
-        if (!config->force_write && config->relays[i].written_valid &&
+        if (!config->force_write && !config->write_all && config->relays[i].written_valid &&
             (config->relays[i].estate == board_set_state))
         {
             continue;
@@ -450,7 +451,7 @@ char
         {
 #if defined(LINUX)
             //write_state(config->relays[i].fd, htons(board_set_state), 1);
-            ret = write_state(config->relays[i].fd, board_set_state, 1);
+            ret = write_state(config->relays[i].fd, board_set_state, !config->no_verify);
 #endif
         }
         config->relays[i].written_valid = (ret >= 0) ? 1 : 0;
@@ -951,12 +952,14 @@ void usage(int argc, char **argv)
 {
   startup_banner();
 
-  printf("usage: %s [-h] [-v(erbose)] [-c udp_command_port] bitmask \n",argv[0]);
+  printf("usage: %s [-h] [-v(erbose)] [-a] [-n] [-c udp_command_port] bitmask \n",argv[0]);
   printf("\t -h this output.\n");
   printf("\t -v verbosity.\n");
   printf("\t -t run test.\n");
   printf("\t -c command port (defaults 1026)\n");
   printf("\t -e emulate number of boards (no hardware needed)\n");
+  printf("\t -a write all boards on every set (Pi 3: avoids idle-board USB stalls)\n");
+  printf("\t -n no verify: skip read-back after each board write\n");
   printf("\t -c command port (defaults 1026)\n");
 
   exit(2);
@@ -975,6 +978,23 @@ termination_handler(int signum)
         if (write(STDERR_FILENO, msg, sizeof(msg) - 1)) {/* best effort */}
         _exit(11);
     }
+}
+
+//
+// A "plain set" is a packet that is only "set <hex bitmask>". Each one carries the
+// complete relay state, so when several are queued only the newest matters.
+//
+static int
+is_plain_set(const char *c)
+{
+    if (strncmp(c, "set ", 4) != 0)
+        return 0;
+    for (c += 4; *c; c++)
+    {
+        if (!isxdigit((unsigned char)*c) && *c != ' ' && *c != '\n' && *c != '\r')
+            return 0;
+    }
+    return 1;
 }
 
 int main(int argc, char **argv)
@@ -1001,7 +1021,7 @@ int main(int argc, char **argv)
     //config->control_port=1026;                       // default UDP port 0 (off)
     
     // Parse Command Line
-	while ((c = getopt(argc, argv, "c:e:tvh")) != EOF)
+	while ((c = getopt(argc, argv, "c:e:tvhna")) != EOF)
 	{
     		switch (c) 
 			{
@@ -1012,6 +1032,16 @@ int main(int argc, char **argv)
     			break;
     		case 'v':
     			config->verbose++;
+    			break;
+    		case 'a':
+                // Write every board on every set instead of only changed boards.
+                // On a Pi 3, a board left idle stalls 0.7-1s on its next write;
+                // constant traffic keeps the USB path responsive.
+                config->write_all=1;
+    			break;
+    		case 'n':
+                // Skip the read-back verify after each write.
+                config->no_verify=1;
     			break;
     		case 't':
                 test=1;
@@ -1157,6 +1187,35 @@ int main(int argc, char **argv)
                         last=ms_count();
                         //int add_client(RELAY_CONFIG *config, IPADDR ip, U16 port);
                         add_client(config, &client);
+
+                        // Coalesce queued sets. If USB writes stalled, several full-state
+                        // "set" packets can be waiting; applying each one in turn makes the
+                        // delay pile up. Skip ahead to the newest plain set. Anything else
+                        // stays queued and is handled in order on the next pass.
+                        if (is_plain_set(cmd))
+                        {
+                            int skipped = 0;
+                            for (;;)
+                            {
+                                char    next[1024];
+                                int     n;
+                                n = recv(config->control_soc, next, 1024 - 2, MSG_PEEK);
+                                if (n <= 0)
+                                    break;
+                                next[n] = 0;
+                                if (!is_plain_set(next))
+                                    break;
+                                slen = sizeof(struct sockaddr_in);
+                                n = recvfrom(config->control_soc, cmd, 1024 - 2, 0, (struct sockaddr *)&client, (socklen_t *)&slen);
+                                if (n <= 0)
+                                    break;
+                                cmd[n] = 0;
+                                add_client(config, &client);
+                                skipped++;
+                            }
+                            if (skipped && config->verbose)
+                                ytprintf("coalesced %d queued set(s)\n", skipped);
+                        }
 
                         // we have a packet, let process it
                         ret = process_command(config, cmd, replybuffer);

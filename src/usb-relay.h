@@ -126,6 +126,8 @@ typedef struct relay_config_
 
     int         daemonize;
     int         verbose;
+    int         write_all;                              // write every board on every set (-a), keeps Pi 3 USB from stalling
+    int         no_verify;                              // skip read-back verify after each board write (-n)
     int         board_count;
     //
     U32         hold_start;
