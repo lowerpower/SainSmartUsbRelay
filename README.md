@@ -165,6 +165,7 @@ on the USB HID board.
 
 ## Links
 * https://github.com/lowerpower/sainsmart-relay16 - relay16 firmware for SainSmart's serial 16-channel boards.
+* https://blog.mycal.net/finally-a-replacement-for-the-relay-boards-we-cant-buy-anymore/ - the story behind the relay16 firmware.
 * https://github.com/lowerpower/fire-controller-web - Web UI that can drive this software.
 * https://www.facebook.com/rearedinsteel/ - Reared In Steel facebook.
 * https://www.facebook.com/rearedinsteel/videos/713271008877496/ - project in action on flower tower
