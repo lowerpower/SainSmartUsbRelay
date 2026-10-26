@@ -14,6 +14,7 @@ A C-based control system for SainSmart 16-channel USB relay boards using the Lin
 SainSmartUsbRelay/
 ├── src/                        # Main relay control application
 │   ├── usb-relay.c/h          # Core application & HID protocol
+│   ├── relay16.c              # Serial (CH340) boards running relay16 firmware
 │   ├── arch.c/h               # Platform abstraction (time, string, I/O)
 │   ├── net.c/h                # Cross-platform socket utilities
 │   ├── webio.c/h              # Socket I/O with optional SSL
@@ -96,6 +97,18 @@ Bytes 14-17: Checksum (additive sum of all preceding bytes)
 Bytes 18-63: Padding
 ```
 
+### relay16 Serial Boards
+The SainSmart 101-70-208 (CH340 serial, USB `1a86:7523`) reflashed with
+[relay16](https://github.com/lowerpower/sainsmart-relay16) firmware.
+
+- **Interface:** `/dev/ttyUSB*` / `/dev/ttyACM*` whose USB device is a CH340 (sysfs), plus any `-s` port; 115200 8N1, opened exclusive
+- **Commands:** ASCII lines, one reply line each: `h 00F0` → `00F0` (set all), `r` (read), `t MS` (board failsafe), `v` → `relay16 1L id 3`
+- **Placement:** by the ID stored on each board, not by tty order. Default: board ID N is position N. `-b 11,12,13` lists IDs for positions 1, 2, 3. A missing board leaves its position empty; duplicate IDs are fatal at startup
+- **Writes:** `h XXXX` goes to every changed board first, then all replies are collected, so a multi-board set costs one round trip (~3-4 ms). Every reply is checked
+- **Keepalive:** idle boards get `r` every failsafe/4 ms (default failsafe 1000 ms, `-f`); the reply also catches a board that reset or tripped its failsafe
+- **Hot plug:** a board that disappears is reattached by ID (and set all-off) when it comes back
+- HID boards, if also present, take the positions after the relay16 boards
+
 ### State Representation
 - Each 16-channel board = 4 hex digits (`0x0000`-`0xFFFF`)
 - Up to 16 boards supported (256 channels max)
@@ -136,6 +149,9 @@ Same command set via console. Can be wrapped by `websocketd` to expose as a WebS
 - **Emulation mode** (`-e <boards>`). Enables development/testing without physical hardware.
 - **Hold time mechanism.** Prevents rapid relay cycling that could damage hardware. Delays in 100ms increments.
 - **Max on-time safety.** Auto-clears all relays after timeout (default 2s) to prevent stuck-on conditions — critical for fire effects.
+- **Board-side failsafe (relay16).** Each relay16 board drops its relays on its own if usb-relay stops talking to it (crash, hang, unplugged USB). usb-relay sets it at startup (`-f`, default 1000 ms) and keeps idle boards alive.
+- **All off on exit.** SIGINT/SIGTERM clear every relay before exit, like `quit`.
+- **Stable board positions (relay16).** Boards are placed by their stored ID, so a missing board never shifts the others into its place.
 - **Daemonization.** Runs as background service with PID file, syslog, and signal handling (SIGINT, SIGTERM, SIGSEGV).
 
 ## Build

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-25 — relay16 serial boards
+
+- Support for SainSmart 101-70-208 serial (CH340) boards running the [relay16](https://github.com/lowerpower/sainsmart-relay16) firmware, alongside the HID boards. `src/relay16.c`, `src/usb-relay.c`, `src/usb-relay.h`, `src/makefile`
+- Boards are placed by the ID stored on each board (`-b` maps IDs to positions); a missing board leaves its position empty, duplicate IDs are fatal, and a board that drops off USB is reattached by ID.
+- Sets go to every changed relay16 board before any reply is read; every reply is checked.
+- `-f MS` sets each relay16 board's own failsafe (default 1000 ms) with keepalives to idle boards; `-s PORT` probes extra serial ports.
+- All relays are cleared on exit by SIGINT/SIGTERM, not only by `quit`.
+
 ## 2026-10-02 — Write only changed boards
 
 - `set` now writes only boards whose 16-bit state changed (each board write is a HID write plus a verify read). A board whose last write or verify failed is always rewritten. `src/usb-relay.c`, `src/usb-relay.h`

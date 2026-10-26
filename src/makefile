@@ -28,7 +28,7 @@ LIBS_INC        =
 DEPENDALL	= mytypes.h config.h arch.h net.h webio.h yselect.h usb-relay.h daemonize.h log.h debug.h
 
 #Objects
-OBJ	= usb-relay.o net.o webio.o arch.o log.o daemonize.o
+OBJ	= usb-relay.o relay16.o net.o webio.o arch.o log.o daemonize.o
 OBJ    += yselect.o
 
 $(OBJ): $(DEPENDALL)

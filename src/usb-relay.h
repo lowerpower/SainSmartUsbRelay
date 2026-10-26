@@ -97,7 +97,24 @@ typedef struct relay_
     int     active;     
     int     estate;
     int     written_valid;  // 1 when estate is known to be on the board (last write succeeded)
+
+    // relay16 serial boards (relay16.c)
+    int     type;           // RELAY_TYPE_HID or RELAY_TYPE_RELAY16
+    int     board_id;       // ID stored on the board; this position only ever takes that board
+    int     failsafe;       // board's host-silence failsafe, ms (0 = off)
+    U32     last_tx;        // ms_count() of the last command sent
+    char    fw[16];         // firmware version from "v"
+    int     rxlen;
+    char    rxbuf[64];      // partial reply line
 }RELAY;
+
+#define RELAY_TYPE_HID      0
+#define RELAY_TYPE_RELAY16  1
+
+// SainSmart 101-70-208 serial board: CH340, relay16 firmware
+#define RELAY16_VID         0x1a86
+#define RELAY16_PID         0x7523
+#define RELAY16_DEFAULT_FAILSAFE 1000
 
 typedef struct connections_
 {
@@ -137,6 +154,14 @@ typedef struct relay_config_
     U32         max_on_time;                            // in 100's of ms (tenths of a second)
     int         force_write;                            // write every board on the next set (clear_all)
 
+    // relay16 serial boards
+    int         board_map[MAX_RELAY_BOARDS];            // -b: board ID for each position (position 1 first)
+    int         board_map_count;
+    int         board_failsafe;                         // -f: board failsafe in ms, set at attach (-1 = leave)
+    char        *serial_dev[MAX_RELAY_BOARDS];          // -s: extra serial ports to probe
+    int         serial_dev_count;
+    U32         last_rescan;
+
     struct relay_ relays[MAX_RELAY_BOARDS];
 }RELAY_CONFIG;
 
@@ -149,6 +174,13 @@ char *read_bitmask(RELAY_CONFIG *config);
 int read_current_state(int fd);
 const char *bus_str(int bus);
 int expire_clients(RELAY_CONFIG *config, int timeout_in_seconds);
+
+// relay16.c
+int  relay16_find(RELAY_CONFIG *config);
+int  relay16_send_state(RELAY *r, int state);
+void relay16_collect(RELAY_CONFIG *config, char *pending, int is_poll);
+void relay16_poll(RELAY_CONFIG *config);
+int  relay16_wait_ms(RELAY_CONFIG *config, int max_ms);
 
 
 

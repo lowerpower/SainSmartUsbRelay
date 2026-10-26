@@ -1,5 +1,6 @@
 /*
- * SainSmart USB Relay control using hidraw
+ * SainSmart USB Relay control using hidraw, plus SainSmart serial (CH340)
+ * boards running the relay16 firmware (relay16.c)
  *
  * Copyright (c) 2017 mycal 
  *
@@ -299,6 +300,7 @@ int find_relay_devices(RELAY_CONFIG *config)
 	int fd;
     DIR *dp;
     struct dirent *ep;     
+    int r16_positions;
 #endif
 
     // if emulation, just set the estate and relay to active for the number of boards 
@@ -319,6 +321,11 @@ int find_relay_devices(RELAY_CONFIG *config)
         return(0);
     }
 #if defined(LINUX)
+    // relay16 serial boards first: each is placed by the ID stored on it.
+    // HID boards have no ID and follow in discovery order.
+    relay16_find(config);
+    r16_positions = config->board_count;
+
     // Open the devices directory
     dp = opendir (config->dev_dir);
 
@@ -385,6 +392,10 @@ int find_relay_devices(RELAY_CONFIG *config)
     }
     else
         perror ("Couldn't open the directory");
+
+    if (r16_positions && (config->board_count > r16_positions))
+        fprintf(stderr, "usb-relay: WARNING: HID boards at positions %d-%d have no stored ID; "
+                "their order can change between runs\n", r16_positions + 1, config->board_count);
 #endif
     return(ret);
 }
@@ -421,7 +432,10 @@ char
     int i;
     int board_set_state;
     U32 start;
+    char r16_pending[MAX_RELAY_BOARDS];
+    int r16_any = 0;
 
+    memset(r16_pending, 0, sizeof(r16_pending));
     start=ms_count();
     for (i = 0; i < config->board_count; i++)
     {
@@ -429,6 +443,15 @@ char
 
         // get current state from set_state for board
         board_set_state = extract_board_state(set_state, i);
+
+        // A position whose relay16 board is missing: nothing to write, and it
+        // reports all off. The board is set all-off when it comes back.
+        if ((RELAY_TYPE_RELAY16 == config->relays[i].type) && !config->relays[i].active)
+        {
+            config->relays[i].estate = 0;
+            config->relays[i].written_valid = 1;
+            continue;
+        }
 
         // Only write boards whose state changed. Each board write is a USB HID
         // write plus a verify read, so skipping unchanged boards keeps a set fast.
@@ -447,6 +470,19 @@ char
         {
             ysleep_usec(5000);
         }
+        else if (RELAY_TYPE_RELAY16 == config->relays[i].type)
+        {
+            // Send now, collect the reply after every board has been sent to,
+            // so the boards work in parallel. Always verified: the board
+            // answers every command with its actual state.
+            config->relays[i].written_valid = 0;
+            if (relay16_send_state(&config->relays[i], board_set_state) == 0)
+            {
+                r16_pending[i] = 1;
+                r16_any = 1;
+            }
+            continue;
+        }
         else
         {
 #if defined(LINUX)
@@ -456,6 +492,9 @@ char
         }
         config->relays[i].written_valid = (ret >= 0) ? 1 : 0;
     }
+
+    if (r16_any)
+        relay16_collect(config, r16_pending, 0);
 
     if(config->verbose>1) printf("delta=%u\n",ms_count()-start);
 
@@ -959,8 +998,10 @@ void usage(int argc, char **argv)
   printf("\t -c command port (defaults 1026)\n");
   printf("\t -e emulate number of boards (no hardware needed)\n");
   printf("\t -a write all boards on every set (Pi 3: avoids idle-board USB stalls)\n");
-  printf("\t -n no verify: skip read-back after each board write\n");
-  printf("\t -c command port (defaults 1026)\n");
+  printf("\t -n no verify: skip read-back after each board write (HID boards)\n");
+  printf("\t -b id,id,... relay16 board IDs for positions 1,2,... (default: board ID N is position N)\n");
+  printf("\t -f ms relay16 board failsafe: relays off after ms without traffic (default %d, 0 = off)\n", RELAY16_DEFAULT_FAILSAFE);
+  printf("\t -s port also probe this serial port for a relay16 board (repeatable)\n");
 
   exit(2);
 } 
@@ -1017,11 +1058,12 @@ int main(int argc, char **argv)
     // Initialize config
     memset(config,0,sizeof(RELAY_CONFIG));    
     strcpy(config->dev_dir,"/dev/");
-    config->max_on_time=2000;                          // 1 seconds
+    config->max_on_time=2000;                          // 2 seconds
+    config->board_failsafe=RELAY16_DEFAULT_FAILSAFE;
     //config->control_port=1026;                       // default UDP port 0 (off)
     
     // Parse Command Line
-	while ((c = getopt(argc, argv, "c:e:tvhna")) != EOF)
+	while ((c = getopt(argc, argv, "c:e:tvhnab:f:s:")) != EOF)
 	{
     		switch (c) 
 			{
@@ -1045,6 +1087,43 @@ int main(int argc, char **argv)
     			break;
     		case 't':
                 test=1;
+    			break;
+    		case 'b':
+                // relay16 board IDs, position 1 first: -b 11,12,13
+                {
+                    char *p = optarg, *end;
+                    config->board_map_count = 0;
+                    while (*p)
+                    {
+                        long id = strtol(p, &end, 10);
+                        if ((end == p) || (id < 1) || (id > 255) ||
+                            (config->board_map_count >= MAX_RELAY_BOARDS))
+                        {
+                            fprintf(stderr, "bad -b list '%s': up to %d board IDs 1-255, comma separated\n",
+                                    optarg, MAX_RELAY_BOARDS);
+                            exit(2);
+                        }
+                        config->board_map[config->board_map_count++] = (int)id;
+                        p = (*end == ',') ? end + 1 : end;
+                        if (*end && (*end != ','))
+                        {
+                            fprintf(stderr, "bad -b list '%s'\n", optarg);
+                            exit(2);
+                        }
+                    }
+                }
+    			break;
+    		case 'f':
+                config->board_failsafe = atoi(optarg);
+                if ((config->board_failsafe < 0) || (config->board_failsafe > 65535))
+                {
+                    fprintf(stderr, "-f takes 0-65535 ms\n");
+                    exit(2);
+                }
+    			break;
+    		case 's':
+                if (config->serial_dev_count < MAX_RELAY_BOARDS)
+                    config->serial_dev[config->serial_dev_count++] = optarg;
     			break;
             case 'e':
                 config->emulate=atoi(optarg);
@@ -1170,7 +1249,8 @@ int main(int argc, char **argv)
                 //
                 // Wait on select, 100ms, chance YS to ms paramters
                 //
-                active = Yoics_Select(350);
+                // wake in time for relay16 keepalives
+                active = Yoics_Select(relay16_wait_ms(config, 350));
                 if (active)
                 {
                     char    cmd[1024],replybuffer[1024];
@@ -1319,6 +1399,9 @@ int main(int argc, char **argv)
             read_bitmask(config);
         }
 
+        // relay16 keepalives, health check, reattach missing boards
+        relay16_poll(config);
+
         //config->max_on_time
         // Make sure everything is off based on max on time
         //if((config->on_time_start) && ((hund_ms_count()-config->on_time_start)>config->max_on_time) )
@@ -1344,6 +1427,9 @@ int main(int argc, char **argv)
         //                fflush(stdout);
         
     }
+
+    // Leave nothing on. SIGINT/SIGTERM end the loop without a quit command.
+    clear_all(config);
 
     exit(0);
 }

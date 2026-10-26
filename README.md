@@ -25,6 +25,11 @@ usage: ./usb-relay [-h] [-v(erbose)] [-c udp_command_port] bitmask
          -t run test.
          -c command port (defaults 1026)
          -e emulate number of boards (no hardware needed)
+         -a write all boards on every set (Pi 3: avoids idle-board USB stalls)
+         -n no verify: skip read-back after each board write (HID boards)
+         -b id,id,... relay16 board IDs for positions 1,2,... (default: board ID N is position N)
+         -f ms relay16 board failsafe: relays off after ms without traffic (default 1000, 0 = off)
+         -s port also probe this serial port for a relay16 board (repeatable)
 ```
 
 ### Interactive  Mode
@@ -63,6 +68,48 @@ set 1 5[enter]
 
 When a hold time is specified, the state will be immediately returned, but the next command will not be processed until hold time has expired.  This allows control programs using websockets to be totally event driven without having to rely on timer callbacks.
 
+### SainSmart Serial Boards (relay16 firmware)
+SainSmart's HID boards are no longer made. The current SainSmart 16-channel
+board (101-70-208) has a CH340 serial port and slow stock firmware; reflashed
+with [relay16](https://github.com/lowerpower/sainsmart-relay16) it is on par
+with the HID boards, and usb-relay drives it with the same `set`/`get`
+commands. HID and relay16 boards can be mixed.
+
+usb-relay finds relay16 boards on their own (any `/dev/ttyUSB*` or
+`/dev/ttyACM*` that is a CH340) and places each one by the **ID stored on the
+board**, never by USB port or plug-in order:
+
+- by default, board ID N is position N: `set 00010000` turns on relay 1 of
+  board ID 2
+- `-b 11,12,13` puts board ID 11 at position 1, 12 at position 2, 13 at
+  position 3
+- a missing board leaves its position empty and the other boards stay where
+  they are; two boards with the same ID stop usb-relay at startup
+- a board that drops off USB is picked up again by its ID when it comes back
+
+Give each board its ID once, with the relay16 host tool:
+`relay16.py -p /dev/ttyUSB0 i 3` then `relay16.py -p /dev/ttyUSB0 w`.
+
+Failsafes for relay16 boards, on top of the max on-time and hold logic:
+
+- each board is set all-off when usb-relay attaches it, and every relay is
+  cleared when usb-relay exits (quit, SIGINT or SIGTERM)
+- `-f MS` (default 1000) sets each board's own failsafe: if usb-relay stops
+  talking to a board for that long (crash, hang, unplugged cable) the board
+  turns its relays off by itself. usb-relay sends idle boards a keepalive
+  every MS/4. `-f 0` turns the board failsafe off. The setting is not saved
+  on the board.
+
+```
+-b id,id,...   relay16 board IDs for positions 1,2,... (default: ID N = position N)
+-f ms          relay16 board failsafe (default 1000, 0 = off)
+-s port        also probe this serial port (repeatable), e.g. a non-CH340 adapter
+```
+
+The user running usb-relay needs access to the tty (the `dialout` group on
+most distributions). A set across several boards takes about 3-4 ms in total:
+commands go to every board first and the replies are checked after.
+
 ### Emulating Relay Boards
 You can run the software without hardware when started in emulation mode.  This is enabled by specifying the -e option on the command line with the number of boards you wish to emulate (valid range 1-4).  The number of relay boards will be virtually enumerated and allowed to be virtually set and read.
 
@@ -94,6 +141,7 @@ connector on the main relay board.  Do not connect anything to the **green** con
 on the USB HID board.
 
 ## Links
+* https://github.com/lowerpower/sainsmart-relay16 - relay16 firmware for SainSmart's serial 16-channel boards.
 * https://github.com/lowerpower/fire-controller-web - Web UI that can drive this software.
 * https://www.facebook.com/rearedinsteel/ - Reared In Steel facebook.
 * https://www.facebook.com/rearedinsteel/videos/713271008877496/ - project in action on flower tower
