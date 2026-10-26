@@ -87,8 +87,31 @@ board**, never by USB port or plug-in order:
   they are; two boards with the same ID stop usb-relay at startup
 - a board that drops off USB is picked up again by its ID when it comes back
 
-Give each board its ID once, with the relay16 host tool:
-`relay16.py -p /dev/ttyUSB0 i 3` then `relay16.py -p /dev/ttyUSB0 w`.
+#### Board IDs and board order
+Give each board its ID once, before it goes in a rig. Stop usb-relay (it
+holds the ports open), plug in one board by itself, and use the relay16 host
+tool:
+
+```
+relay16.py scan                     # "unassigned /dev/ttyUSB0"
+relay16.py -p /dev/ttyUSB0 i 3      # set ID 3
+relay16.py -p /dev/ttyUSB0 w        # save to EEPROM (all relays must be off)
+```
+
+Label the board with its ID. The set mask has 4 hex digits per position,
+rightmost first, and each position is one board chosen by its ID:
+
+| Position | Mask digits (from the right) | Relay 1 on | Default board | With `-b 11,12,13` |
+|---|---|---|---|---|
+| 1 | 1-4 | `set 0001` | ID 1 | ID 11 |
+| 2 | 5-8 | `set 00010000` | ID 2 | ID 12 |
+| 3 | 9-12 | `set 000100000000` | ID 3 | ID 13 |
+
+Run with `-v` to see which board landed where, and `-t` to walk every relay
+in position order. To replace a board, give the spare the old board's ID.
+Choosing IDs across several rigs, what happens with missing, duplicate or
+unlisted boards, and a pre-burn check are in the relay16
+[board ID guide](https://github.com/lowerpower/sainsmart-relay16/blob/main/docs/BOARD-IDS.md).
 
 Failsafes for relay16 boards, on top of the max on-time and hold logic:
 
